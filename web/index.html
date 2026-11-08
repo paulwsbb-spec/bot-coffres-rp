@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coffres RP — Tableau de bord</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23f5b301'/><rect x='7' y='9' width='18' height='15' rx='2' fill='none' stroke='%23111' stroke-width='2.5'/><circle cx='16' cy='16.5' r='3' fill='%23111'/></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12.5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9.5v-1M7 20v1.5M17 20v1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div>
+        <div class="brand-title">Coffres <span>RP</span></div>
+        <div class="brand-sub" id="status">Connexion…</div>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="coffre" aria-label="Coffre"><option value="">Tous les coffres</option></select>
+      <div class="seg" id="period" role="tablist">
+        <button data-p="24h">24h</button><button data-p="7d">7 j</button><button data-p="30d" class="on">30 j</button><button data-p="all">Tout</button>
+      </div>
+      <div class="live"><span class="dot"></span><span id="live-label">Live</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="chips" class="chips"></div>
+
+    <section class="coffres" id="coffres"></section>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid g-2-1">
+      <article class="card">
+        <header class="card-h">
+          <h2>Flux d'argent</h2>
+          <div class="seg small" id="tl-mode"><button data-m="money" class="on">Argent</button><button data-m="items">Items</button><button data-m="count">Activité</button></div>
+        </header>
+        <div class="chart-wrap"><canvas id="timeline"></canvas></div>
+      </article>
+      <article class="card feed-card">
+        <header class="card-h"><h2>Temps réel</h2><span class="muted" id="feed-count"></span></header>
+        <ul class="feed" id="feed"></ul>
+      </article>
+    </section>
+
+    <section class="grid g-1-1">
+      <article class="card">
+        <header class="card-h">
+          <h2>Joueurs</h2>
+          <select id="player-sort" class="small">
+            <option value="activity">Plus actifs</option>
+            <option value="deposit">Plus gros dépôts</option>
+            <option value="withdraw">Plus gros retraits</option>
+            <option value="net">Bilan le plus négatif</option>
+            <option value="items_out">Items retirés</option>
+          </select>
+        </header>
+        <div class="table-wrap"><table id="players"></table></div>
+      </article>
+      <article class="card">
+        <header class="card-h">
+          <h2>Items</h2>
+          <div class="seg small" id="item-mode"><button data-m="period" class="on">Période</button><button data-m="stock">Stock estimé</button></div>
+        </header>
+        <div class="table-wrap"><table id="items"></table></div>
+      </article>
+    </section>
+
+    <section class="grid g-1-1">
+      <article class="card">
+        <header class="card-h"><h2>Heures d'activité</h2><span class="muted">jour × heure</span></header>
+        <div id="heatmap" class="heatmap"></div>
+      </article>
+      <article class="card">
+        <header class="card-h"><h2>⚠ Alertes</h2><span class="muted" id="alert-rule"></span></header>
+        <div class="alerts">
+          <div>
+            <h3>Gros retraits</h3>
+            <ul id="big" class="mini-list"></ul>
+          </div>
+          <div>
+            <h3>Prennent plus qu'ils ne déposent</h3>
+            <ul id="takers" class="mini-list"></ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <header class="card-h wrap">
+        <h2>Historique des mouvements <span class="muted" id="tx-total"></span></h2>
+        <div class="filters">
+          <input id="q" type="search" placeholder="Rechercher joueur, item, coffre…">
+          <select id="f-action"><option value="">Dépôts + retraits</option><option value="deposit">Dépôts</option><option value="withdraw">Retraits</option></select>
+          <select id="f-kind"><option value="">Argent + items</option><option value="money">Argent</option><option value="item">Items</option></select>
+          <button id="csv" class="btn ghost">Export CSV</button>
+        </div>
+      </header>
+      <div class="table-wrap"><table id="tx"></table></div>
+      <footer class="pager"><button id="prev" class="btn ghost">← Précédent</button><span id="page"></span><button id="next" class="btn ghost">Suivant →</button></footer>
+    </section>
+
+    <details class="card unparsed">
+      <summary><h2>Logs non reconnus <span class="badge" id="unparsed-n">0</span></h2><span class="muted">Ajoute une règle dans config.json pour les prendre en compte</span></summary>
+      <ul id="unparsed"></ul>
+    </details>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

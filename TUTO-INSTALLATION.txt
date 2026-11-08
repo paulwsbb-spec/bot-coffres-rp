@@ -1,0 +1,183 @@
+=====================================================================
+   BOT COFFRES RP — TUTO D'INSTALLATION (Windows, ~10 minutes)
+=====================================================================
+
+Ce bot lit les logs de coffres envoyés par webhook dans un salon Discord,
+les range dans le salon de chaque coffre (#flat-3-1, #flat-3-2, ...),
+affiche un panneau d'état épinglé dans chaque salon, et ouvre un tableau
+de bord web avec toutes les stats (argent déposé/retiré, items, joueurs).
+
+Il faut :
+  - un PC Windows qui reste allumé tant que le bot doit tourner
+  - être administrateur du serveur Discord
+
+
+---------------------------------------------------------------------
+ ÉTAPE 1 — Installer Node.js (une seule fois)
+---------------------------------------------------------------------
+  1. Va sur https://nodejs.org
+  2. Télécharge la version "LTS" (bouton vert), installe-la en laissant
+     toutes les options par défaut (Suivant, Suivant, ...).
+  3. Redémarre le PC (ou au moins ferme/rouvre les fenêtres).
+
+
+---------------------------------------------------------------------
+ ÉTAPE 2 — Télécharger le bot (sans navigateur)
+---------------------------------------------------------------------
+  1. Ouvre ton dossier "Documents" dans l'Explorateur Windows.
+  2. Clique dans la BARRE D'ADRESSE en haut, efface tout, tape   cmd
+     puis Entrée → une fenêtre noire s'ouvre dans Documents.
+  3. Copie-colle cette ligne (clic droit = coller), puis Entrée :
+
+  curl -L -o bot.zip https://github.com/paulwsbb-spec/bot-coffres-rp/archive/refs/heads/main.zip && tar -xf bot.zip && del bot.zip && cd bot-coffres-rp-main
+
+  → tu as maintenant un dossier "bot-coffres-rp-main" dans Documents,
+    et la fenêtre noire est déjà placée dedans : passe directement au
+    point 3 de l'étape 4 (npm install) une fois l'étape 3 faite.
+
+
+---------------------------------------------------------------------
+ ÉTAPE 3 — Créer le bot sur Discord
+---------------------------------------------------------------------
+  1. Va sur https://discord.com/developers/applications
+     (connecte-toi avec ton compte Discord)
+  2. Bouton "Nouvelle application" (ou "+ Créer") en haut à droite,
+     donne-lui un nom (ex : "Stats Coffres"), accepte, Créer.
+  3. Dans le menu à GAUCHE, clique sur "Bot".
+
+  4. LE TOKEN (le mot de passe du bot) :
+     - Sous "Jeton", clique sur "Réinitialiser le token" → Oui.
+     - Clique sur "Copier". Garde-le de côté (bloc-notes) pour l'étape 4.
+
+     /!\ NE DONNE JAMAIS CE TOKEN À PERSONNE, ne l'envoie pas en message
+     ni en capture d'écran. Celui qui l'a contrôle le bot.
+     Si tu l'as montré par erreur : "Réinitialiser le token" à nouveau.
+
+  5. ACTIVER LA LECTURE DES MESSAGES (obligatoire) :
+     - Toujours sur la page "Bot", DESCENDS tout en bas jusqu'à la section
+       "Intentions de passerelle privilégiées"
+       (en anglais : "Privileged Gateway Intents").
+     - Active UNIQUEMENT le 3e interrupteur :
+       "Intention de contenu des messages" ("Message Content Intent")
+       → il devient bleu.
+     - Une barre apparaît en bas de l'écran : clique sur
+       "Enregistrer les modifications" ("Save Changes").
+
+     Sans ça, le bot ne peut pas lire les logs.
+
+
+---------------------------------------------------------------------
+ ÉTAPE 4 — Lancer l'installateur
+---------------------------------------------------------------------
+  1. Ouvre le dossier bot-coffres-rp-main (dans Documents).
+  2. Clique dans la BARRE D'ADRESSE en haut (là où il y a le chemin
+     du dossier), efface tout, tape   cmd   puis Entrée.
+     → une fenêtre noire s'ouvre, déjà placée dans le bon dossier.
+  3. Tape cette commande puis Entrée (installe le nécessaire, ~30 s) :
+
+         npm install
+
+  4. Puis celle-ci, Entrée :
+
+         npm run setup
+
+  L'installateur te guide :
+    1. Colle le token (clic droit dans la fenêtre = coller), Entrée.
+    2. Il affiche un LIEN D'INVITATION : copie-le dans ton navigateur,
+       choisis ton serveur Discord, Autoriser. Reviens, Entrée.
+    3. Il liste les salons du serveur avec un numéro :
+       - tape le numéro du salon où arrivent les LOGS du webhook
+       - tape le numéro d'un salon pour les ALERTES (ou Entrée = aucun)
+    4. Il détecte les salons de coffres (#flat-...) et vérifie que le bot
+       y a accès. Les salons en ROUGE = le bot ne les voit pas → étape 5.
+
+
+---------------------------------------------------------------------
+ ÉTAPE 5 — Donner accès au bot aux salons privés (cadenas)
+---------------------------------------------------------------------
+  Les salons avec un cadenas sont invisibles pour le bot par défaut.
+
+  Le plus simple : sur la CATÉGORIE qui contient les salons des coffres
+  (et celle du salon de logs) :
+    1. Clic droit sur la catégorie → "Modifier la catégorie"
+    2. "Permissions" → "+" (ajouter des membres ou rôles)
+       → choisis le rôle du bot (il porte le nom du bot)
+    3. Coche (vert) :
+         - Voir le salon
+         - Envoyer des messages
+         - Intégrer des liens
+         - Lire l'historique des messages
+         - Gérer les messages   (pour épingler le panneau)
+    4. Enregistrer. Vérifie que les salons sont "synchronisés" avec la
+       catégorie (sinon refais-le sur chaque salon).
+
+  Tu peux relancer   npm run setup   pour revérifier : tout doit être vert.
+
+
+---------------------------------------------------------------------
+ ÉTAPE 6 — Démarrer le bot
+---------------------------------------------------------------------
+  Dans la fenêtre noire (ouverte comme à l'étape 4 : barre d'adresse
+  du dossier → cmd → Entrée), tape :
+
+         npm start
+
+  - Il doit afficher "connecté en tant que ..." : le bot est en ligne.
+  - NE FERME PAS cette fenêtre : la fermer = arrêter le bot.
+  - Au premier lancement, il lit TOUT l'historique du salon de logs
+    (quelques minutes si beaucoup de logs).
+  - Les fois suivantes : rouvre une fenêtre dans le dossier et retape
+    npm start   (il reprend là où il s'était arrêté, sans doublons).
+
+  Tableau de bord web : ouvre http://localhost:3000 dans ton navigateur
+  (sur le PC où tourne le bot).
+
+
+---------------------------------------------------------------------
+ ÉTAPE 7 — Dans Discord
+---------------------------------------------------------------------
+  /salons      vérifie dans quel salon va chaque coffre (à faire en 1er)
+  /classer     reposte les ANCIENS logs dans les salons des coffres
+               (choisis la période : 24 h, 7 jours, 30 jours ou Tout)
+  /stats       stats d'un coffre ou de tous (argent, items, joueurs)
+  /joueur      profil d'un joueur : ce qu'il a déposé / retiré
+  /top         classements (déposants, retraits, suspects...)
+  /stock       stock estimé d'un coffre
+  /recent      derniers mouvements
+  /dashboard   lien du tableau de bord
+  /nonreconnus logs que le bot n'a pas compris
+
+  Ensuite tout est automatique : chaque nouveau log est rangé dans le
+  salon de son coffre et le panneau "📊 État du coffre" épinglé se met
+  à jour tout seul.
+
+
+---------------------------------------------------------------------
+ PROBLÈMES FRÉQUENTS
+---------------------------------------------------------------------
+  "node" ou "npm" n'est pas reconnu
+      → Node.js pas installé ou PC pas redémarré (étape 1).
+
+  "npm : impossible de charger le fichier ... l'exécution de scripts
+   est désactivée"
+      → tu es dans PowerShell au lieu de cmd. Ferme et rouvre la fenêtre
+        en tapant bien   cmd   dans la barre d'adresse (étape 4).
+
+  Les commandes / n'apparaissent pas
+      → attends 1 minute, puis Ctrl+R dans Discord. Vérifie que la
+        fenêtre de npm start est ouverte et affiche "connecté".
+
+  Le bot ne range rien dans les salons
+      → /salons : s'il y a ⛔ = permissions manquantes (étape 5).
+        S'il y a ❓ = aucun salon ne porte le nom du coffre écrit
+        dans les logs (le salon doit s'appeler pareil, ex : flat-3-1).
+
+  "Disallowed intents" dans la fenêtre noire
+      → l'étape 3.5 (Message Content) n'est pas activée/enregistrée.
+
+  Des logs ne sont pas reconnus (/nonreconnus)
+      → envoie un exemple de log à Paul pour qu'il ajoute la règle.
+
+  Changer de salon de logs / de serveur
+      → relance   npm run setup.
+=====================================================================

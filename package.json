@@ -1,0 +1,19 @@
+{
+  "name": "gta-rp-coffres",
+  "version": "1.0.0",
+  "description": "Bot Discord + dashboard web d'analyse des logs de coffres GTA RP (webhooks)",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "start":"node --env-file-if-exists=.env --no-warnings=ExperimentalWarning src/index.js",
+    "web": "node --env-file-if-exists=.env --no-warnings=ExperimentalWarning src/index.js --web-only",
+    "import": "node --env-file-if-exists=.env --no-warnings=ExperimentalWarning scripts/import-file.js",
+    "demo": "node --no-warnings=ExperimentalWarning scripts/seed-demo.js",
+    "test": "node --no-warnings=ExperimentalWarning --test test/parser.test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}

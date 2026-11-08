@@ -1,0 +1,25 @@
+{
+  "channels": {
+    "REMPLACER_PAR_ID_SALON_LOGS": { "coffre": null, "label": "logs-coffres" }
+  },
+  "acceptNonWebhookMessages": false,
+  "autoRoute": true,
+  "routing": {},
+  "panels": true,
+  "alertChannelId": "",
+  "alerts": {
+    "moneyWithdrawThreshold": 100000,
+    "itemWithdrawThreshold": 50,
+    "watchItems": ["weapon_", "pistol", "rifle", "arme"]
+  },
+  "moneyItems": {
+    "cash": ["money", "cash", "argent", "argent propre", "liquide", "dollars", "dollar", "billets"],
+    "black_money": ["black_money", "black money", "argent sale", "dirty money", "markedbills", "marked bills", "billets marqués"]
+  },
+  "itemAliases": {
+    "bread": "Pain",
+    "water": "Eau"
+  },
+  "coffreAliases": {},
+  "rules": []
+}
