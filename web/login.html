@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NLS — Connexion</title>
+  <link rel="icon" href="bot-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rubik+Dirt&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #050505; --red: #d71f26; --red-2: #ff3b42; --text: #f4f4f4; --muted: #9a9a9a; --line: rgba(255,255,255,.12); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font: 15px/1.5 Inter, system-ui, sans-serif; color: var(--text); background: var(--bg);
+      display: grid; place-items: center; overflow: hidden; padding: 16px;
+    }
+    /* Fond : logo géant flouté + halo rouge + grain + vignette */
+    .bg, .bg::before, .bg::after { position: fixed; inset: 0; pointer-events: none; }
+    .bg { background: url(bot-logo.png) center / min(130vmin, 1300px) no-repeat; filter: blur(38px) grayscale(.3) brightness(.35); transform: scale(1.15); animation: drift 22s ease-in-out infinite alternate; }
+    .glow { position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(600px 380px at 50% 58%, rgba(215,31,38,.28), transparent 70%),
+                  radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.92) 100%); }
+    .grain { position: fixed; inset: -50%; pointer-events: none; opacity: .09;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation: grain 1.2s steps(6) infinite; }
+    @keyframes drift { to { transform: scale(1.25) translateY(-2%); } }
+    @keyframes grain { 0%,100% { transform: translate(0,0); } 20% { transform: translate(-3%,2%); } 40% { transform: translate(2%,-3%); } 60% { transform: translate(-2%,-1%); } 80% { transform: translate(3%,3%); } }
+
+    .card {
+      position: relative; width: 100%; max-width: 380px; text-align: center; padding: 34px 28px 26px;
+      background: linear-gradient(180deg, rgba(20,20,20,.78), rgba(8,8,8,.86));
+      border: 1px solid var(--line); border-radius: 22px; backdrop-filter: blur(14px);
+      box-shadow: 0 30px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06);
+      animation: rise .7s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .card::before { content: ''; position: absolute; left: 22%; right: 22%; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--red), transparent); }
+    @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+
+    .logo { width: 150px; height: 150px; margin: -96px auto 14px; border-radius: 50%; display: block; background: #000;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.08), 0 0 0 7px rgba(215,31,38,.15), 0 0 60px rgba(215,31,38,.45);
+      animation: pulse 4s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 2px rgba(255,255,255,.1), 0 0 0 9px rgba(215,31,38,.22), 0 0 80px rgba(215,31,38,.6); } }
+
+    h1 { font: 400 40px/1 'Rubik Dirt', Inter, sans-serif; letter-spacing: .04em; margin: 0; text-transform: uppercase; }
+    h1 span { color: var(--red); }
+    .slash { width: 120px; height: 4px; margin: 12px auto 10px; background: var(--red); border-radius: 2px; transform: skewX(-20deg); box-shadow: 0 0 14px rgba(215,31,38,.7); }
+    .sub { color: var(--muted); margin: 0 0 24px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+
+    .field { position: relative; }
+    input {
+      width: 100%; height: 52px; padding: 0 50px 0 18px; border-radius: 14px; outline: none;
+      background: rgba(0,0,0,.55); border: 1px solid var(--line); color: var(--text); font: 600 16px Inter, sans-serif; letter-spacing: .04em;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input::placeholder { color: #666; font-weight: 500; letter-spacing: 0; }
+    input:focus { border-color: var(--red); box-shadow: 0 0 0 4px rgba(215,31,38,.18); }
+    .eye { position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+    .eye:hover { color: var(--text); background: rgba(255,255,255,.06); }
+
+    button.go {
+      width: 100%; height: 52px; margin-top: 14px; border: 0; border-radius: 14px; cursor: pointer;
+      font: 800 15px Inter, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #fff;
+      background: linear-gradient(180deg, var(--red-2), var(--red)); box-shadow: 0 10px 30px rgba(215,31,38,.4), inset 0 1px 0 rgba(255,255,255,.25);
+      transition: transform .15s, box-shadow .2s, filter .2s;
+    }
+    button.go:hover { transform: translateY(-1px); box-shadow: 0 14px 38px rgba(215,31,38,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+    button.go:disabled { filter: grayscale(.6) brightness(.7); cursor: wait; transform: none; }
+
+    .err { min-height: 22px; margin-top: 12px; color: var(--red-2); font-size: 13px; font-weight: 600; }
+    .shake { animation: shake .4s; }
+    @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+    footer { margin-top: 18px; color: #555; font-size: 11px; letter-spacing: .3em; text-transform: uppercase; }
+
+    @media (max-height: 620px) { .logo { width: 110px; height: 110px; margin-top: -70px; } h1 { font-size: 32px; } }
+    @media (prefers-reduced-motion: reduce) { .bg, .grain, .logo, .card { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="bg"></div><div class="glow"></div><div class="grain"></div>
+
+  <form class="card" id="f" autocomplete="on">
+    <img class="logo" src="bot-logo.png" alt="NLS Stats">
+    <h1>NLS <span>Coffres</span></h1>
+    <div class="slash"></div>
+    <p class="sub">Accès réservé au crew</p>
+
+    <div class="field">
+      <input id="pw" type="password" name="password" placeholder="Mot de passe" autocomplete="current-password" required autofocus>
+      <button type="button" class="eye" id="eye" aria-label="Afficher le mot de passe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <button class="go" id="go" type="submit">Entrer</button>
+    <div class="err" id="err" role="alert"></div>
+    <footer>No Love Society</footer>
+  </form>
+
+  <script>
+    const f = document.getElementById('f'), pw = document.getElementById('pw'), go = document.getElementById('go'), err = document.getElementById('err');
+    document.getElementById('eye').onclick = () => { pw.type = pw.type === 'password' ? 'text' : 'password'; pw.focus(); };
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      go.disabled = true; go.textContent = '…'; err.textContent = '';
+      try {
+        const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw.value }) });
+        if (r.ok) { go.textContent = '✓'; location.href = '/'; return; }
+        const j = await r.json().catch(() => ({}));
+        err.textContent = j.error || 'Erreur de connexion';
+      } catch { err.textContent = 'Serveur injoignable — le bot est-il lancé ?'; }
+      f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake');
+      go.disabled = false; go.textContent = 'Entrer'; pw.select();
+    };
+  </script>
+</body>
+</html>

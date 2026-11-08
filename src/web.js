@@ -16,15 +16,43 @@ export function startWeb({ stats, cfg, env, getStatus = () => ({}) }) {
     res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
   };
 
-  const authorized = (req) => {
-    if (!env.password) return true;
-    const h = req.headers.authorization || '';
-    if (!h.startsWith('Basic ')) return false;
-    const pass = Buffer.from(h.slice(6), 'base64').toString().split(':').slice(1).join(':');
-    const a = Buffer.from(pass);
-    const b = Buffer.from(env.password);
-    return a.length === b.length && crypto.timingSafeEqual(a, b);
-  };
+  // ---------- Connexion : page de login + cookie de session ----------
+  // Jeton = HMAC du mot de passe : reste valable après un redémarrage, invalidé si le mot de passe change.
+  const sessionToken = () => crypto.createHmac('sha256', env.password).update('nls-coffres-session').digest('hex');
+  const safeEq = (a, b) => { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+  const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
+  const authorized = (req) => !env.password || safeEq(cookies(req).nls_session || '', sessionToken());
+  const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.css', '/bot-logo.png', '/api/login']);
+  const attempts = new Map(); // anti brute-force : 8 essais / 10 min par IP
+  const clientIp = (req) => req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+
+  function readBody(req) {
+    return new Promise((resolve) => {
+      let data = '';
+      req.on('data', (c) => { data += c; if (data.length > 1e4) req.destroy(); });
+      req.on('end', () => resolve(data));
+    });
+  }
+
+  async function handleLogin(req, res) {
+    const ip = clientIp(req);
+    const now = Date.now();
+    const a = attempts.get(ip) || { n: 0, t: now };
+    if (now - a.t > 10 * 60e3) { a.n = 0; a.t = now; }
+    if (a.n >= 8) return send(res, 429, { error: 'Trop d\'essais. Réessaie dans quelques minutes.' });
+    let password = '';
+    try { password = JSON.parse(await readBody(req) || '{}').password || ''; } catch { /* corps invalide */ }
+    if (!env.password || !safeEq(password, env.password)) {
+      a.n++; attempts.set(ip, a);
+      return send(res, 401, { error: 'Mot de passe incorrect' });
+    }
+    attempts.delete(ip);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': `nls_session=${sessionToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}`,
+    });
+    res.end('{"ok":true}');
+  }
 
   const filtersFrom = (q) => {
     const f = {
@@ -56,11 +84,23 @@ export function startWeb({ stats, cfg, env, getStatus = () => ({}) }) {
   };
 
   const server = http.createServer((req, res) => {
-    if (!authorized(req)) {
-      res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Coffres RP"' });
-      return res.end('Authentification requise');
-    }
     const url = new URL(req.url, 'http://x');
+
+    if (url.pathname === '/api/login' && req.method === 'POST') return handleLogin(req, res);
+    if (url.pathname === '/logout') {
+      res.writeHead(302, { Location: '/login', 'Set-Cookie': 'nls_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' });
+      return res.end();
+    }
+    if (url.pathname === '/login') url.pathname = '/login.html';
+    if (!authorized(req) && !PUBLIC_PATHS.has(url.pathname)) {
+      if (url.pathname.startsWith('/api/')) return send(res, 401, { error: 'non connecté' });
+      res.writeHead(302, { Location: '/login' });
+      return res.end();
+    }
+    if (url.pathname === '/login.html' && authorized(req) && env.password) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
+    }
 
     if (url.pathname === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });

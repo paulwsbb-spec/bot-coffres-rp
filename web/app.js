@@ -34,7 +34,11 @@ const qs = (extra = {}) => {
   for (const [k, v] of Object.entries(o)) if (v !== '' && v != null) p.set(k, v);
   return p.toString();
 };
-const api = (path, extra) => fetch(`/api/${path}?${qs(extra)}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const api = (path, extra) => fetch(`/api/${path}?${qs(extra)}`).then((r) => {
+  if (r.status === 401) { location.href = '/login'; throw new Error('non connecté'); }
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+});
 
 /* ---------- Coffres ---------- */
 async function loadCoffres() {

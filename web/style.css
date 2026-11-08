@@ -68,6 +68,8 @@ select.small { padding: 5px 10px; min-height: 30px; font-size: 12px; }
 
 .btn { border: 1px solid var(--line-2); background: var(--card-2); border-radius: 9px; padding: 7px 12px; cursor: pointer; font-weight: 600; font-size: 12px; }
 .btn:hover { border-color: var(--brand); }
+a.btn { text-decoration: none; color: var(--muted); }
+a.btn:hover { color: var(--text); }
 .btn:disabled { opacity: .35; cursor: default; border-color: var(--line-2); }
 
 /* ---------- Layout ---------- */
