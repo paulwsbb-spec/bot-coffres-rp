@@ -59,18 +59,29 @@ async function loadCoffres() {
 function kpi(label, value, hint, accent, cls = '') {
   return `<div class="kpi" style="--accent:${accent}"><div class="label">${label}</div><div class="value ${cls}" title="${esc(value)}">${value}</div><div class="hint">${hint}</div></div>`;
 }
+/** Tuile d'un item clé : entrées / sorties sur la période + qui a déposé / pris */
+function itemKpi(icon, d) {
+  const who = d.players.length
+    ? `<ul class="who-list">${d.players.map((p) => `<li><span class="link" data-player="${esc(p.player)}">${esc(p.player)}</span>
+        <span>${p.qty_in ? `<b class="pos">+${nf.format(p.qty_in)}</b>` : ''}${p.qty_in && p.qty_out ? ' ' : ''}${p.qty_out ? `<b class="neg">−${nf.format(p.qty_out)}</b>` : ''}</span></li>`).join('')}</ul>`
+    : '<div class="hint">Personne sur cette période</div>';
+  return `<div class="kpi item-kpi" style="--accent:var(--black)">
+    <div class="label">${icon} ${esc(d.item)}</div>
+    <div class="value"><span class="pos">+${nf.format(d.qty_in)}</span> / <span class="neg">−${nf.format(d.qty_out)}</span></div>
+    <div class="hint">stock dans le coffre : <b>${nf.format(d.stock)}</b></div>${who}</div>`;
+}
+
 async function loadSummary() {
-  const s = await api('summary');
-  const inn = s.cash_in + s.black_in;
+  const [s, keys] = await Promise.all([api('summary'), api('key-items').catch(() => [])]);
   const out = s.cash_out + s.black_out;
-  const net = inn - out;
   const total = s.cash_balance + s.black_balance;
   const since = s.anchored_at ? `solde saisi le ${dateFmt.format(s.anchored_at)}` : 'tape /solde pour régler le montant réel';
+  const icons = ['🔓', '💻'];
   $('#kpis').innerHTML = [
     kpi('💰 Argent dans le coffre', compact(total), `sale ${compact(s.black_balance)} · propre ${compact(s.cash_balance)}<br>${since}`, 'var(--brand)', total < 0 ? 'neg' : ''),
-    kpi('Argent déposé', compact(inn), `dont sale ${compact(s.black_in)}`, 'var(--in)', 'pos'),
+    keys[0] ? itemKpi(icons[0], keys[0]) : '',
     kpi('Argent retiré', compact(out), `dont sale ${compact(s.black_out)}`, 'var(--out)', 'neg'),
-    kpi('Bilan période', `${net >= 0 ? '+' : ''}${compact(net)}`, `${nf.format(s.n)} mouvements`, net >= 0 ? 'var(--in)' : 'var(--out)', net >= 0 ? 'pos' : 'neg'),
+    keys[1] ? itemKpi(icons[1], keys[1]) : '',
     kpi('Items entrés / sortis', `${nf.format(s.items_in)} / ${nf.format(s.items_out)}`, `net ${s.items_in - s.items_out >= 0 ? '+' : ''}${nf.format(s.items_in - s.items_out)}`, 'var(--black)'),
     kpi('Joueurs actifs', nf.format(s.players), `${s.coffres} coffre(s)`, 'var(--line-2)'),
   ].join('');
@@ -125,7 +136,7 @@ let nextReset = 0;
 async function loadWeeks() {
   weeks = await api('weeks', { period: '', player: '' });
   const sel = $('#week');
-  if (!weeks.some((w) => String(w.start) === String(state.week))) state.week = weeks[0]?.start || '';
+  if (!weeks.some((w) => String(w.start) === String(state.week))) state.week = String(weeks[0]?.start || '');
   sel.innerHTML = weeks.map((w) => `<option value="${w.start}" ${String(w.start) === String(state.week) ? 'selected' : ''}>${weekLabel(w)}${w.top ? ` · 🥇 ${esc(w.top.player)}` : ''}</option>`).join('');
 }
 
@@ -140,9 +151,14 @@ function renderCountdown() {
 }
 setInterval(renderCountdown, 30000);
 
+let rankReq = 0;
 async function loadPlayers() {
   if (!weeks.length) await loadWeeks();
-  const { rows, next_reset: nr } = await api('ranking', { week: state.week, period: '', player: '' });
+  const id = ++rankReq;
+  const week = state.week;
+  const { rows, next_reset: nr } = await api('ranking', { week, period: '', player: '' });
+  if (id !== rankReq || week !== state.week) return; // réponse périmée (semaine changée entre-temps)
+  $('#week').value = String(week);
   nextReset = nr;
   renderCountdown();
   const ranked = rows.filter((p) => p.deposited > 0);

@@ -141,6 +141,11 @@ tbody tr:hover td { background: rgba(255, 255, 255, .02); }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; overflow: hidden; display: flex; }
 .bar i { display: block; height: 100%; }
 
+.kpis { align-items: start; }
+.item-kpi .hint b { color: var(--text); }
+.who-list { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; max-height: 132px; overflow-y: auto; }
+.who-list li { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.who-list b { font-family: var(--mono); font-weight: 600; }
 .week-info { color: var(--muted); font-size: 12px; margin: -6px 0 10px; }
 .week-info b { color: var(--text); }
 td.medal { width: 34px; font-size: 18px; text-align: center; }

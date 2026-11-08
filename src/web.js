@@ -75,6 +75,8 @@ export function startWeb({ stats, cfg, env, getStatus = () => ({}) }) {
     '/api/timeline': (f) => stats.timeline(f),
     '/api/players': (f, q) => stats.players(f, { sort: q.get('sort') || 'activity', limit: q.get('limit') || 50 }),
     '/api/weeks': (f) => stats.weeks({ coffre: f.coffre }),
+    '/api/key-items': (f) => (cfg.kpiItems || ['Outil de crochetage', 'Boîtier de piratage'])
+      .map((it) => stats.itemDetail({ ...f, item: null }, it)),
     '/api/ranking': (f, q) => ({
       start: Number(q.get('week')) || weekStart(),
       next_reset: weekEnd(weekStart()),

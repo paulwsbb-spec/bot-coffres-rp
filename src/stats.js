@@ -156,6 +156,24 @@ export function createStats(db) {
         .map((p, k) => ({ rank: k + 1, ...p, deposited: p.cash_in + p.black_in, withdrawn: p.cash_out + p.black_out }));
     },
 
+    /** Détail d'un item : entrées/sorties sur la période, stock, et qui a déposé / pris */
+    itemDetail(f, item) {
+      const g = { ...f, item, kind: 'item' };
+      const w = buildWhere(g);
+      const t = get(`SELECT COALESCE(SUM(CASE WHEN action='deposit' THEN quantity END),0) AS qty_in,
+                            COALESCE(SUM(CASE WHEN action='withdraw' THEN quantity END),0) AS qty_out
+                     FROM transactions ${w.sql}`, w.params);
+      const ws = buildWhere({ ...g, from: null });
+      const s = get(`SELECT COALESCE(SUM(CASE WHEN action='deposit' THEN quantity ELSE -quantity END),0) AS stock FROM transactions ${ws.sql}`, ws.params);
+      const wp = buildWhere(g, ['player IS NOT NULL']);
+      const players = all(`SELECT player,
+                             COALESCE(SUM(CASE WHEN action='deposit' THEN quantity END),0) AS qty_in,
+                             COALESCE(SUM(CASE WHEN action='withdraw' THEN quantity END),0) AS qty_out
+                           FROM transactions ${wp.sql} GROUP BY player COLLATE NOCASE
+                           ORDER BY (qty_in + qty_out) DESC LIMIT 8`, wp.params);
+      return { item, ...t, stock: s.stock, players };
+    },
+
     items(f, { limit = 100 } = {}) {
       const w = buildWhere(f, ["kind = 'item'"]);
       return all(`SELECT item,
