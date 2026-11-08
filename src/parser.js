@@ -8,6 +8,9 @@
 //   3. phrases libres FR/EN ("X a déposé 5x Pain dans le coffre Y")
 //   4. listes à puces ("- 5x Pain") avec action/joueur trouvés ailleurs
 
+// À incrémenter à chaque changement du parseur : le bot ré-analyse alors tous les logs au démarrage.
+export const PARSER_VERSION = 2;
+
 // ---------- Nettoyage & nombres ----------
 
 export function clean(s) {
@@ -183,6 +186,8 @@ function finalize(tx, cfg) {
   let item = tx.item;
   if (tx.kind === 'item') {
     item = clean(item).replace(/^(d'|de |du |des )/i, '').replace(/[.,;:]+$/, '').trim();
+    // Numéro de série d'arme "(W6WEHSLTWU)" : retiré pour regrouper les stats par type d'item
+    if (cfg.stripSerials !== false) item = item.replace(/\s*\([A-Z0-9]{8,}\)\s*$/, '').trim();
     const alias = cfg.itemAliases?.[item] ?? cfg.itemAliases?.[item.toLowerCase()];
     if (alias) item = alias;
   }
@@ -204,7 +209,8 @@ function finalize(tx, cfg) {
 
 const SENTENCES = [
   // FR : "Jean a déposé 5x Pain dans le coffre Vagos"
-  /^(?<player>.+?)\s+(?:a|à|vient de)\s+(?<verb>d[ée]pos[ée]r?|retir[ée]r?|pris|mis|ajout[ée]|sorti|r[ée]cup[ée]r[ée]|rang[ée]|plac[ée]|stock[ée])\s+(?<what>.+?)(?:\s+(?:dans|du|de la|de l'|depuis|au|à|en|sur)\s+(?:l[ae]\s|l')?(?:coffre|stash|inventaire|stockage|casier)?\s*(?<coffre>.*?))?\s*[.!]?$/i,
+  // ("à/au/en/sur" seulement s'ils sont suivis de "coffre" : sinon "Vénia Purifier À 50" casse tout)
+  /^(?<player>.+?)\s+(?:a|à|vient de)\s+(?<verb>d[ée]pos[ée]r?|retir[ée]r?|pris|mis|ajout[ée]|sorti|r[ée]cup[ée]r[ée]|rang[ée]|plac[ée]|stock[ée])\s+(?<what>.+?)(?:\s+(?:(?:dans|du|de la|de l'|depuis)\s+(?:l[ae]\s|l')?(?:coffre|stash|inventaire|stockage|casier)?|(?:au|à|en|sur)\s+(?:l[ae]\s|l')?(?:coffre|stash|inventaire|stockage|casier))\s*(?<coffre>.*?))?\s*[.!]?$/i,
   // EN : "John withdrew 3x WEAPON_PISTOL from stash police"
   /^(?<player>.+?)\s+(?:has\s+)?(?<verb>deposited|withdrew|withdrawn|took|taken|put|removed|added|stored|placed)\s+(?<what>.+?)(?:\s+(?:into|in|to|from|out of|inside)\s+(?:the\s+)?(?:stash|vault|safe|storage|inventory|container)?\s*(?<coffre>.*?))?\s*[.!]?$/i,
   // Passif : "Retrait de 5 Eau par Lamar (coffre Families)" / "Dépôt de 2000$ par X dans Y"
@@ -261,6 +267,11 @@ export function createParser(cfg = {}) {
   const moneyType = makeMoneyMatcher(cfg);
 
   return function parseMessage(msg, { defaultCoffre = null } = {}) {
+    // Webhook qui regroupe plusieurs logs (jusqu'à 10 embeds) : chaque embed est un log à part
+    if ((msg.embeds?.length || 0) > 1) {
+      const out = msg.embeds.flatMap((e) => parseMessage({ content: '', embeds: [e] }, { defaultCoffre }));
+      if (out.length) return out;
+    }
     const text = flatten(msg);
     if (!text) return [];
     const withDefaults = (list) =>

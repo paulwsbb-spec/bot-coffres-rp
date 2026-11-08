@@ -103,6 +103,30 @@ test('vrai format serveur : retrait d\'item', () => {
   assert.equal(t.coffre, 'Flat 3 Quartier 1');
 });
 
+test('vrai format serveur : 10 logs regroupés, "À 50" dans le nom, numéro de série', () => {
+  const E = (d) => ({ title: 'Flat 3 Quartier 1', description: d, fields: [] });
+  const r = parse({ embeds: [
+    E('**Jean Martin** a déposé 5626x Argent Sale'),
+    E('**Paul Durand** a déposé 1x SNS Pico (VVVPVGPGKS)'),
+    E('**Paul Durand** a déposé 2x Vénia Purifier À 50'),
+    E('**Jean Martin** a retiré 1x Pistolet SNS (W6WEHSLTWU)'),
+    E('**Jean Martin** a déposé 1x Table De Jus De Mangue 3'),
+  ] });
+  assert.equal(r.length, 5);
+  assert.ok(r.every((t) => t.coffre === 'Flat 3 Quartier 1'));
+  assert.deepEqual(r.map((t) => [t.player, t.action, t.item, t.quantity]), [
+    ['Jean Martin', 'deposit', 'black_money', 5626],
+    ['Paul Durand', 'deposit', 'SNS Pico', 1],
+    ['Paul Durand', 'deposit', 'Vénia Purifier À 50', 2],
+    ['Jean Martin', 'withdraw', 'Pistolet SNS', 1],
+    ['Jean Martin', 'deposit', 'Table De Jus De Mangue 3', 1],
+  ]);
+});
+
+test('message "Webhook configuré" ignoré', () => {
+  assert.deepEqual(parse({ content: 'Webhook Flat 3 Quartier 4 configuré pour la propriété 191249 par Jean Martin' }), []);
+});
+
 test('message non pertinent ignoré', () => {
   assert.deepEqual(parse({ content: 'Serveur redémarré, bon jeu à tous' }), []);
 });

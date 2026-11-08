@@ -132,7 +132,16 @@ export function createRouter({ client, db, cfg, stats, env }) {
   }
 
   async function updateAllPanels() {
-    for (const { coffre } of stats.coffres()) await updatePanel(coffre);
+    const live = new Set(stats.coffres().map((c) => c.coffre));
+    // Supprime les panneaux de coffres qui n'existent plus (ex. coffre mal lu avant une correction)
+    for (const p of db.prepare('SELECT * FROM panels').all()) {
+      if (live.has(p.coffre)) continue;
+      const ch = guild()?.channels.cache.get(p.channel_id);
+      const msg = ch ? await ch.messages.fetch(p.message_id).catch(() => null) : null;
+      if (msg) await msg.delete().catch(() => {});
+      db.prepare('DELETE FROM panels WHERE coffre = ?').run(p.coffre);
+    }
+    for (const coffre of live) await updatePanel(coffre);
   }
 
   // ---------- Historique : reposte les anciens mouvements dans les salons ----------
