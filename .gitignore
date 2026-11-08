@@ -6,3 +6,4 @@ tools/
 *.bat
 *.db
 *.db-*
+cloud/.wrangler/

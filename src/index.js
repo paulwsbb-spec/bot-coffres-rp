@@ -41,8 +41,20 @@ if (process.env.PUBLIC_TUNNEL === '1') {
     const { startTunnel } = await import('./tunnel.js');
     startTunnel({
       port: env.port,
-      onUrl: (url) => {
+      onUrl: async (url) => {
         env.dashboardUrl = url;
+        // Lien fixe (Cloudflare Pages) : on lui donne le lien du tunnel du moment
+        if (process.env.RELAY_URL && process.env.RELAY_SECRET) {
+          try {
+            const r = await fetch(`${process.env.RELAY_URL}/__register`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', 'x-secret': process.env.RELAY_SECRET },
+              body: JSON.stringify({ target: url }),
+            });
+            if (r.ok) { env.dashboardUrl = process.env.RELAY_URL; url = process.env.RELAY_URL; }
+            else console.warn(`[tunnel] lien fixe non mis à jour (${r.status})`);
+          } catch (e) { console.warn('[tunnel] lien fixe injoignable :', e.message); }
+        }
         console.log('\n==============================================================');
         console.log(`  DASHBOARD EN LIGNE : ${url}`);
         console.log('  (mot de passe = DASHBOARD_PASSWORD du fichier .env, identifiant : n\'importe lequel)');
