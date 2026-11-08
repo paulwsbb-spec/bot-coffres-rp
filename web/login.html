@@ -37,7 +37,7 @@
     .card::before { content: ''; position: absolute; left: 22%; right: 22%; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--red), transparent); }
     @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.98); } }
 
-    .logo { width: 150px; height: 150px; margin: -96px auto 14px; border-radius: 50%; display: block; background: #000;
+    .logo { width: 150px; height: 150px; margin: 4px auto 18px; border-radius: 50%; display: block; background: #000;
       box-shadow: 0 0 0 2px rgba(255,255,255,.08), 0 0 0 7px rgba(215,31,38,.15), 0 0 60px rgba(215,31,38,.45);
       animation: pulse 4s ease-in-out infinite; }
     @keyframes pulse { 50% { box-shadow: 0 0 0 2px rgba(255,255,255,.1), 0 0 0 9px rgba(215,31,38,.22), 0 0 80px rgba(215,31,38,.6); } }
@@ -72,7 +72,7 @@
     @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
     footer { margin-top: 18px; color: #555; font-size: 11px; letter-spacing: .3em; text-transform: uppercase; }
 
-    @media (max-height: 620px) { .logo { width: 110px; height: 110px; margin-top: -70px; } h1 { font-size: 32px; } }
+    @media (max-height: 620px) { .logo { width: 110px; height: 110px; } h1 { font-size: 32px; } }
     @media (prefers-reduced-motion: reduce) { .bg, .grain, .logo, .card { animation: none; } }
   </style>
 </head>
