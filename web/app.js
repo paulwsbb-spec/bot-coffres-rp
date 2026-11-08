@@ -59,16 +59,24 @@ async function loadCoffres() {
 function kpi(label, value, hint, accent, cls = '') {
   return `<div class="kpi" style="--accent:${accent}"><div class="label">${label}</div><div class="value ${cls}" title="${esc(value)}">${value}</div><div class="hint">${hint}</div></div>`;
 }
-/** Tuile d'un item clé : entrées / sorties sur la période + qui a déposé / pris */
-function itemKpi(icon, d) {
-  const who = d.players.length
-    ? `<ul class="who-list">${d.players.map((p) => `<li><span class="link" data-player="${esc(p.player)}">${esc(p.player)}</span>
-        <span>${p.qty_in ? `<b class="pos">+${nf.format(p.qty_in)}</b>` : ''}${p.qty_in && p.qty_out ? ' ' : ''}${p.qty_out ? `<b class="neg">−${nf.format(p.qty_out)}</b>` : ''}</span></li>`).join('')}</ul>`
-    : '<div class="hint">Personne sur cette période</div>';
-  return `<div class="kpi item-kpi" style="--accent:var(--black)">
-    <div class="label">${icon} ${esc(d.item)}</div>
-    <div class="value"><span class="pos">+${nf.format(d.qty_in)}</span> / <span class="neg">−${nf.format(d.qty_out)}</span></div>
-    <div class="hint">stock dans le coffre : <b>${nf.format(d.stock)}</b></div>${who}</div>`;
+/** Carte d'un item clé : entrées / sorties sur la période, stock, et qui a déposé / pris */
+function itemCard(icon, d) {
+  const max = Math.max(1, ...d.players.map((p) => p.qty_in + p.qty_out));
+  const rows = d.players.length
+    ? d.players.map((p) => `<tr>
+        <td><span class="link" data-player="${esc(p.player)}">${esc(p.player)}</span>
+          <div class="bar" style="width:${Math.max(6, ((p.qty_in + p.qty_out) / max) * 100)}%"><i style="width:${(p.qty_in / Math.max(1, p.qty_in + p.qty_out)) * 100}%;background:var(--in)"></i><i style="flex:1;background:var(--out)"></i></div></td>
+        <td class="num pos">${p.qty_in ? `+${nf.format(p.qty_in)}` : '—'}</td>
+        <td class="num neg">${p.qty_out ? `−${nf.format(p.qty_out)}` : '—'}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="empty">Personne sur cette période</td></tr>';
+  return `<article class="card item-card">
+    <header class="card-h"><h2>${icon} ${esc(d.item)}</h2><span class="stock-badge">Stock : <b>${nf.format(d.stock)}</b></span></header>
+    <div class="item-totals">
+      <div><span class="muted">Déposés</span><b class="pos">+${nf.format(d.qty_in)}</b></div>
+      <div><span class="muted">Pris</span><b class="neg">−${nf.format(d.qty_out)}</b></div>
+    </div>
+    <table class="who"><thead><tr><th>Par qui</th><th class="num">Déposé</th><th class="num">Pris</th></tr></thead><tbody>${rows}</tbody></table>
+  </article>`;
 }
 
 async function loadSummary() {
@@ -79,12 +87,11 @@ async function loadSummary() {
   const icons = ['🔓', '💻'];
   $('#kpis').innerHTML = [
     kpi('💰 Argent dans le coffre', compact(total), `sale ${compact(s.black_balance)} · propre ${compact(s.cash_balance)}<br>${since}`, 'var(--brand)', total < 0 ? 'neg' : ''),
-    keys[0] ? itemKpi(icons[0], keys[0]) : '',
     kpi('Argent retiré', compact(out), `dont sale ${compact(s.black_out)}`, 'var(--out)', 'neg'),
-    keys[1] ? itemKpi(icons[1], keys[1]) : '',
     kpi('Items entrés / sortis', `${nf.format(s.items_in)} / ${nf.format(s.items_out)}`, `net ${s.items_in - s.items_out >= 0 ? '+' : ''}${nf.format(s.items_in - s.items_out)}`, 'var(--black)'),
-    kpi('Joueurs actifs', nf.format(s.players), `${s.coffres} coffre(s)`, 'var(--line-2)'),
+    kpi('Joueurs actifs', nf.format(s.players), `${s.coffres} coffre(s) · ${nf.format(s.n)} mouvements`, 'var(--line-2)'),
   ].join('');
+  $('#key-items').innerHTML = keys.map((d, k) => itemCard(icons[k] || '📦', d)).join('');
   $('#unparsed-n').textContent = nf.format(s.unparsed);
 }
 
