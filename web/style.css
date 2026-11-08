@@ -1,20 +1,21 @@
+/* Charte NLS — No Love Society : noir profond, blanc craie, rouge sang */
 :root {
-  --bg: #0b0c0f;
-  --bg-2: #111318;
-  --card: #15171d;
-  --card-2: #1b1e25;
-  --line: #262a33;
-  --line-2: #323744;
-  --text: #eceef3;
-  --muted: #8a90a0;
-  --faint: #5c6273;
-  --brand: #f5b301;
-  --brand-ink: #1a1400;
-  --in: #22c55e;
-  --in-soft: rgba(34, 197, 94, .14);
-  --out: #f04545;
-  --out-soft: rgba(240, 69, 69, .14);
-  --black: #a78bfa;
+  --bg: #070707;
+  --bg-2: #0e0e0e;
+  --card: #121212;
+  --card-2: #1a1a1a;
+  --line: #262626;
+  --line-2: #363636;
+  --text: #f4f4f4;
+  --muted: #b4b4b4;
+  --faint: #7a7a7a;
+  --brand: #d71f26;
+  --brand-ink: #ffffff;
+  --in: #3ddc84;
+  --in-soft: rgba(61, 220, 132, .14);
+  --out: #ff4d55;
+  --out-soft: rgba(255, 77, 85, .15);
+  --black: #c9c9c9;
   --radius: 14px;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   color-scheme: dark;
@@ -22,7 +23,13 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; }
-body { background: radial-gradient(1200px 500px at 10% -10%, rgba(245, 179, 1, .07), transparent 60%), var(--bg); min-height: 100vh; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 420px at 50% -12%, rgba(215, 31, 38, .13), transparent 65%),
+    radial-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px) 0 0 / 3px 3px,
+    var(--bg);
+}
 h2 { font-size: 14px; font-weight: 700; margin: 0; letter-spacing: .01em; }
 h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
 .muted { color: var(--muted); font-size: 12px; font-weight: 500; }
@@ -34,9 +41,10 @@ button, select, input { font: inherit; color: inherit; }
   padding: 14px 28px; background: rgba(11, 12, 15, .82); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 12px; }
-.logo { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--brand); color: var(--brand-ink); box-shadow: 0 0 24px rgba(245, 179, 1, .25); }
-.brand-title { font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
+.logo { width: 52px; height: 52px; border-radius: 50%; display: block; object-fit: cover; background: #000; box-shadow: 0 0 0 1px var(--line-2), 0 0 22px rgba(215, 31, 38, .35); }
+.brand-title { font-family: 'Rubik Dirt', Inter, sans-serif; font-size: 22px; letter-spacing: .04em; line-height: 1; text-transform: uppercase; }
 .brand-title span { color: var(--brand); }
+.brand-sub { margin-top: 3px; }
 .brand-sub { font-size: 12px; color: var(--muted); }
 .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
@@ -73,8 +81,8 @@ main { max-width: 1480px; margin: 0 auto; padding: 22px 28px 60px; display: flex
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chips:empty { display: none; }
-.chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(245, 179, 1, .12); color: var(--brand); border: 1px solid rgba(245, 179, 1, .35); padding: 5px 6px 5px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; }
-.chip button { background: rgba(245, 179, 1, .2); border: 0; color: inherit; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; line-height: 1; }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(215, 31, 38, .14); color: #fff; border: 1px solid rgba(215, 31, 38, .55); padding: 5px 6px 5px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+.chip button { background: rgba(215, 31, 38, .45); border: 0; color: inherit; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; line-height: 1; }
 
 /* ---------- Coffres ---------- */
 .coffres { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
@@ -103,7 +111,12 @@ main { max-width: 1480px; margin: 0 auto; padding: 22px 28px 60px; display: flex
 .feed { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 300px; display: flex; flex-direction: column; gap: 6px; }
 .feed li { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--card-2); font-size: 13px; }
 .feed li.flash { animation: flash 1.6s ease-out; }
-@keyframes flash { from { background: rgba(245, 179, 1, .25); } }
+@keyframes flash { from { background: rgba(215, 31, 38, .3); } }
+/* Titres de cartes : touche "graffiti" + trait rouge comme le logo */
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; }
+.card-h h2::after { content: ''; display: block; width: 28px; height: 2px; margin-top: 5px; background: var(--brand); border-radius: 2px; }
+.kpi .label { text-transform: uppercase; letter-spacing: .05em; font-size: 11px; }
+.kpi .value { font-size: 20px; }
 .feed .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 14px; }
 .ic.in { background: var(--in-soft); color: var(--in); } .ic.out { background: var(--out-soft); color: var(--out); }
 .feed .who { font-weight: 600; } .feed .what { color: var(--muted); font-size: 12px; }

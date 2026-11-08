@@ -2,6 +2,7 @@ node_modules/
 data/
 .env
 .claude/
+tools/
 *.bat
 *.db
 *.db-*

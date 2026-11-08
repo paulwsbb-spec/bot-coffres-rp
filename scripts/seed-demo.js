@@ -24,7 +24,7 @@ const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const COFFRES = ['flat-3-1', 'flat-3-2', 'flat-3-3', 'flat-3-4'];
 // Joueurs fictifs — comportement aléatoire identique pour tous (personne n'est désigné "suspect" dans la démo)
-const PLAYERS = Array.from({ length: 8 }, (_, k) => [`JOUEUR ${k + 1}`, k + 1]);
+const PLAYERS = ['Alex Moreau', 'Benji Costa', 'Carlos Vega', 'Diego Ramos', 'Enzo Ricci', 'Farid Nasri', 'Gino Russo', 'Hugo Lambert'].map((n, k) => [n, k + 1]);
 const ITEMS = [['Pain', 20], ['Eau', 20], ['Bandage', 10], ['Weed', 40], ['Cocaïne', 15], ['Lockpick', 5], ['WEAPON_PISTOL', 2], ['Munitions 9mm', 120], ['Kevlar', 3], ['Ordinateur', 1], ['Crochet', 4]];
 
 function fakeTx(t) {
@@ -74,7 +74,8 @@ inTransaction(db, () => {
 const s = stats.summary({});
 console.log(`[demo] ${n} faux logs → ${s.n} mouvements, ${s.unparsed} non reconnus`);
 
-const port = Number(process.env.DASHBOARD_PORT || 3000);
+const portArg = process.argv.indexOf('--port');
+const port = Number(portArg > 0 ? process.argv[portArg + 1] : process.env.DASHBOARD_PORT || 3000);
 startWeb({ stats, cfg, env: { port, password: '' }, getStatus: () => ({ bot: 'DÉMO', backfilling: false, channels: 0 }) });
 
 // Temps réel simulé

@@ -96,7 +96,7 @@ export function createRouter({ client, db, cfg, stats, env }) {
       .setColor(0xf5b301)
       .setTitle(`📊 État du coffre ${coffre}`)
       .addFields(
-        { name: '🏦 Solde estimé', value: `💵 ${$(all.cash_balance)}\n🩸 ${$(all.black_balance)} *(sale)*`, inline: true },
+        { name: '💰 Argent dans le coffre', value: `**${$(all.cash_balance + all.black_balance)}**\n🩸 sale ${$(all.black_balance)}\n💵 propre ${$(all.cash_balance)}`, inline: true },
         { name: '🕐 Dernières 24 h', value: `Argent ${signed(day.cash_in + day.black_in - day.cash_out - day.black_out)}\nItems +${nf.format(day.items_in)} / −${nf.format(day.items_out)}\n${day.n} mouvements`, inline: true },
         { name: '📦 Stock estimé', value: stock.map((r) => `${r.item} : **${nf.format(r.net)}**`).join('\n') || '—' },
         { name: '👥 Joueurs (7 jours)', value: week.map((p) => {

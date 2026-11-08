@@ -39,10 +39,43 @@ export function createStats(db) {
   const all = (sql, params = []) => db.prepare(sql).all(...params);
   const get = (sql, params = []) => db.prepare(sql).get(...params);
 
+  /**
+   * Argent réellement dans le coffre.
+   * Si un solde de départ a été saisi (/solde) : solde saisi + dépôts − retraits faits APRÈS la saisie.
+   * Sinon : total des dépôts − total des retraits depuis le début des logs.
+   */
+  function balance(coffre = null) {
+    const names = coffre ? [coffre] : [...new Set([
+      ...all('SELECT DISTINCT coffre FROM transactions').map((r) => r.coffre),
+      ...all('SELECT DISTINCT coffre FROM anchors').map((r) => r.coffre),
+    ])];
+    const out = { cash: 0, black: 0, anchored_at: null };
+    for (const c of names) {
+      for (const [item, key] of [['cash', 'cash'], ['black_money', 'black']]) {
+        const a = get('SELECT amount, ts FROM anchors WHERE coffre = ? AND item = ?', [c, item]);
+        const s = get(`SELECT COALESCE(SUM(CASE WHEN action='deposit' THEN amount END),0) AS i,
+                              COALESCE(SUM(CASE WHEN action='withdraw' THEN amount END),0) AS o
+                       FROM transactions WHERE kind='money' AND coffre = ? AND item = ? AND ts > ?`, [c, item, a ? a.ts : -1]);
+        out[key] += (a ? a.amount : 0) + s.i - s.o;
+        if (a) out.anchored_at = Math.max(out.anchored_at || 0, a.ts);
+      }
+    }
+    out.total = out.cash + out.black;
+    return out;
+  }
+
   return {
+    balance,
+
+    setAnchor(coffre, item, amount, ts = Date.now()) {
+      db.prepare(`INSERT INTO anchors (coffre, item, amount, ts) VALUES (?,?,?,?)
+        ON CONFLICT(coffre, item) DO UPDATE SET amount = excluded.amount, ts = excluded.ts`).run(coffre, item, amount, ts);
+    },
+
     coffres() {
       return all(`SELECT coffre, COUNT(*) AS n, MAX(ts) AS last_ts, ${MONEY_SUMS}
-                  FROM transactions GROUP BY coffre ORDER BY n DESC`);
+                  FROM transactions GROUP BY coffre ORDER BY n DESC`)
+        .map((c) => ({ ...c, balance: balance(c.coffre) }));
     },
 
     summary(f) {
@@ -50,11 +83,13 @@ export function createStats(db) {
       const s = get(`SELECT COUNT(*) AS n, COUNT(DISTINCT player) AS players,
                      COUNT(DISTINCT coffre) AS coffres, MIN(ts) AS first_ts, MAX(ts) AS last_ts, ${MONEY_SUMS}
                      FROM transactions ${w.sql}`, w.params);
-      // Solde estimé = tout l'historique jusqu'à `to` (pas seulement la période)
+      // Argent dans le coffre = solde réel (indépendant de la période)
+      const bal = balance(f.coffre || null);
+      s.cash_balance = bal.cash;
+      s.black_balance = bal.black;
+      s.anchored_at = bal.anchored_at;
       const wb = buildWhere({ ...f, from: null });
       const b = get(`SELECT ${MONEY_SUMS} FROM transactions ${wb.sql}`, wb.params);
-      s.cash_balance = b.cash_in - b.cash_out;
-      s.black_balance = b.black_in - b.black_out;
       s.items_balance = b.items_in - b.items_out;
       s.unparsed = get(`SELECT COUNT(*) AS n FROM unparsed`).n;
       return s;

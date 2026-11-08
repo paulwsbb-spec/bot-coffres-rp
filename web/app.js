@@ -2,7 +2,10 @@
 const $ = (s) => document.querySelector(s);
 const nf = new Intl.NumberFormat('fr-FR');
 const money = (n) => `${nf.format(Math.round(n || 0))} $`;
-const compact = (n) => {
+// Montants affichés au dollar près (demande : "que tout se voie bien clair")
+const compact = (n) => `${n < 0 ? '−' : ''}${money(Math.abs(n || 0))}`;
+// Version abrégée réservée aux axes du graphique
+const axis = (n) => {
   const a = Math.abs(n || 0);
   const s = a >= 1e6 ? `${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)} M` : a >= 1e4 ? `${Math.round(a / 1e3)} k` : nf.format(Math.round(a));
   return `${n < 0 ? '−' : ''}${s.replace('.', ',')} $`;
@@ -39,11 +42,11 @@ async function loadCoffres() {
   const sel = $('#coffre');
   sel.innerHTML = '<option value="">Tous les coffres</option>' + list.map((c) => `<option ${c.coffre === state.coffre ? 'selected' : ''}>${esc(c.coffre)}</option>`).join('');
   $('#coffres').innerHTML = list.map((c) => {
-    const bal = c.cash_in - c.cash_out + c.black_in - c.black_out;
+    const bal = c.balance.total;
     return `<button class="coffre-card ${c.coffre === state.coffre ? 'on' : ''}" data-coffre="${esc(c.coffre)}">
       <div class="name">${esc(c.coffre)}<span>${nf.format(c.n)} mvts</span></div>
       <div class="bal ${bal < 0 ? 'neg' : ''}">${compact(bal)}</div>
-      <div class="sub">solde estimé · dernier ${c.last_ts ? ago(c.last_ts) : '—'}</div>
+      <div class="sub">dans le coffre · dernier ${c.last_ts ? ago(c.last_ts) : '—'}</div>
     </button>`;
   }).join('');
 }
@@ -57,11 +60,13 @@ async function loadSummary() {
   const inn = s.cash_in + s.black_in;
   const out = s.cash_out + s.black_out;
   const net = inn - out;
+  const total = s.cash_balance + s.black_balance;
+  const since = s.anchored_at ? `solde saisi le ${dateFmt.format(s.anchored_at)}` : 'tape /solde pour régler le montant réel';
   $('#kpis').innerHTML = [
+    kpi('💰 Argent dans le coffre', compact(total), `sale ${compact(s.black_balance)} · propre ${compact(s.cash_balance)}<br>${since}`, 'var(--brand)', total < 0 ? 'neg' : ''),
     kpi('Argent déposé', compact(inn), `dont sale ${compact(s.black_in)}`, 'var(--in)', 'pos'),
     kpi('Argent retiré', compact(out), `dont sale ${compact(s.black_out)}`, 'var(--out)', 'neg'),
     kpi('Bilan période', `${net >= 0 ? '+' : ''}${compact(net)}`, `${nf.format(s.n)} mouvements`, net >= 0 ? 'var(--in)' : 'var(--out)', net >= 0 ? 'pos' : 'neg'),
-    kpi(state.player ? 'Bilan total (historique)' : 'Solde estimé', compact(s.cash_balance + s.black_balance), `propre ${compact(s.cash_balance)} · sale ${compact(s.black_balance)}`, 'var(--brand)'),
     kpi('Items entrés / sortis', `${nf.format(s.items_in)} / ${nf.format(s.items_out)}`, `net ${s.items_in - s.items_out >= 0 ? '+' : ''}${nf.format(s.items_in - s.items_out)}`, 'var(--black)'),
     kpi('Joueurs actifs', nf.format(s.players), `${s.coffres} coffre(s)`, 'var(--line-2)'),
   ].join('');
@@ -75,14 +80,14 @@ async function loadTimeline() {
   const labels = rows.map((r) => (bucket === 'hour' ? r.t.slice(11, 16) : r.t.slice(8, 10) + '/' + r.t.slice(5, 7)));
   const ds = {
     money: [
-      { label: 'Dépôts', data: rows.map((r) => r.cash_in + r.black_in), backgroundColor: '#22c55e' },
-      { label: 'Retraits', data: rows.map((r) => -(r.cash_out + r.black_out)), backgroundColor: '#f04545' },
+      { label: 'Dépôts', data: rows.map((r) => r.cash_in + r.black_in), backgroundColor: '#3ddc84' },
+      { label: 'Retraits', data: rows.map((r) => -(r.cash_out + r.black_out)), backgroundColor: '#ff4d55' },
     ],
     items: [
-      { label: 'Items entrés', data: rows.map((r) => r.items_in), backgroundColor: '#22c55e' },
-      { label: 'Items sortis', data: rows.map((r) => -r.items_out), backgroundColor: '#f04545' },
+      { label: 'Items entrés', data: rows.map((r) => r.items_in), backgroundColor: '#3ddc84' },
+      { label: 'Items sortis', data: rows.map((r) => -r.items_out), backgroundColor: '#ff4d55' },
     ],
-    count: [{ label: 'Mouvements', data: rows.map((r) => r.n), backgroundColor: '#f5b301' }],
+    count: [{ label: 'Mouvements', data: rows.map((r) => r.n), backgroundColor: '#e8e8e8' }],
   }[state.tlMode];
   const isMoney = state.tlMode === 'money';
   const cfg = {
@@ -92,14 +97,14 @@ async function loadTimeline() {
       responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#8a90a0', boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 2 } },
-        tooltip: { backgroundColor: '#1b1e25', borderColor: '#323744', borderWidth: 1, padding: 10,
+        legend: { labels: { color: '#d0d0d0', boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 2 } },
+        tooltip: { backgroundColor: '#1a1a1a', borderColor: '#d71f26', borderWidth: 1, padding: 10,
           callbacks: { label: (c) => ` ${c.dataset.label} : ${isMoney ? money(Math.abs(c.raw)) : nf.format(Math.abs(c.raw))}` } },
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { color: '#5c6273', maxRotation: 0, autoSkipPadding: 12 } },
-        y: { stacked: true, grid: { color: '#22252d' }, border: { display: false },
-          ticks: { color: '#5c6273', callback: (v) => (isMoney ? compact(v) : nf.format(v)) } },
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#9a9a9a', maxRotation: 0, autoSkipPadding: 12 } },
+        y: { stacked: true, grid: { color: '#222222' }, border: { display: false },
+          ticks: { color: '#9a9a9a', callback: (v) => (isMoney ? axis(v) : nf.format(v)) } },
       },
     },
   };
@@ -147,7 +152,7 @@ async function loadHeatmap() {
   order.forEach((d, k) => {
     html += `<div class="lbl">${days[k]}</div>` + grid[d].map((n, h) => {
       const a = n ? 0.12 + 0.88 * (n / max) : 0;
-      return `<div class="c" title="${days[k]} ${h}h : ${n} mouvements" style="${n ? `background:rgba(245,179,1,${a.toFixed(2)})` : ''}"></div>`;
+      return `<div class="c" title="${days[k]} ${h}h : ${n} mouvements" style="${n ? `background:rgba(215,31,38,${a.toFixed(2)})` : ''}"></div>`;
     }).join('');
   });
   $('#heatmap').innerHTML = html;

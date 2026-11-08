@@ -33,6 +33,25 @@ startWeb({
   }),
 });
 
+// Lien public (tunnel Cloudflare) : PUBLIC_TUNNEL=1 dans .env
+if (process.env.PUBLIC_TUNNEL === '1') {
+  if (!env.password) {
+    console.warn('[tunnel] DASHBOARD_PASSWORD vide dans .env : lien public NON lancé (tout le monde verrait tes stats)');
+  } else {
+    const { startTunnel } = await import('./tunnel.js');
+    startTunnel({
+      port: env.port,
+      onUrl: (url) => {
+        env.dashboardUrl = url;
+        console.log('\n==============================================================');
+        console.log(`  DASHBOARD EN LIGNE : ${url}`);
+        console.log('  (mot de passe = DASHBOARD_PASSWORD du fichier .env, identifiant : n\'importe lequel)');
+        console.log('==============================================================\n');
+      },
+    });
+  }
+}
+
 if (process.argv.includes('--web-only')) {
   console.log('[bot] mode --web-only : bot Discord non démarré');
 } else if (!env.token) {

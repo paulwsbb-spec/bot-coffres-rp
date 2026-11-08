@@ -42,6 +42,15 @@ export function openDb(file) {
       raw        TEXT
     );
 
+    -- Solde réel constaté dans un coffre à un instant donné (les logs ne connaissent pas le contenu initial)
+    CREATE TABLE IF NOT EXISTS anchors (
+      coffre TEXT NOT NULL,
+      item   TEXT NOT NULL,      -- 'cash' | 'black_money'
+      amount REAL NOT NULL,
+      ts     INTEGER NOT NULL,
+      PRIMARY KEY (coffre, item)
+    );
+
     CREATE TABLE IF NOT EXISTS cursors (
       channel_id    TEXT PRIMARY KEY,
       oldest_id     TEXT,

@@ -67,6 +67,12 @@ export const commands = [
   new SlashCommandBuilder().setName('dashboard').setDescription('Lien vers le tableau de bord web'),
   new SlashCommandBuilder().setName('nonreconnus').setDescription('Logs que le parseur n\'a pas compris (pour ajuster les règles)')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  new SlashCommandBuilder().setName('solde').setDescription('Indique combien il y a VRAIMENT dans un coffre maintenant (point de départ du calcul)')
+    .addStringOption((o) => coffreOpt(o).setRequired(true))
+    .addIntegerOption((o) => o.setName('montant').setDescription('Montant actuel dans le coffre, ex : 586737').setRequired(true).setMinValue(0))
+    .addStringOption((o) => o.setName('type').setDescription('Type d\'argent').addChoices(
+      { name: 'Argent sale', value: 'black_money' }, { name: 'Argent propre', value: 'cash' }))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   new SlashCommandBuilder().setName('salons').setDescription('Vérifie dans quel salon chaque coffre est rangé + met à jour les panneaux')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   new SlashCommandBuilder().setName('classer').setDescription('Reposte l\'historique des mouvements dans le salon de chaque coffre')
@@ -308,6 +314,15 @@ export async function startBot({ db, cfg, env, stats, ingest }) {
         const total = stats.summary({}).unparsed;
         const body = rows.map((r) => `\`\`\`${JSON.stringify(JSON.parse(r.raw)).slice(0, 350)}\`\`\``).join('\n');
         return i.reply({ ephemeral: true, content: `**${total}** logs non reconnus. Derniers exemples :\n${body || '—'}`.slice(0, 2000) });
+      }
+
+      case 'solde': {
+        const montant = i.options.getInteger('montant');
+        const type = i.options.getString('type') || 'black_money';
+        stats.setAnchor(coffre, type, montant);
+        bus.emit('refresh');
+        router.updatePanel(coffre).catch(() => {});
+        return i.reply({ content: `✅ **${coffre}** : ${$(montant)} ${type === 'black_money' ? 'd\'argent sale' : 'd\'argent propre'} dans le coffre.\nChaque retrait l'enlèvera, chaque dépôt l'ajoutera.`, ephemeral: true });
       }
 
       case 'salons': {
