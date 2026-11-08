@@ -286,6 +286,11 @@ export function createParser(cfg = {}) {
       const m = /(?:coffre|stash|vault)\s*[:\-–]?\s*([^\-–|\n]+?)(?:\s*[-–|]|$)/i.exec(titles);
       if (m && !detectAction(m[1])) ctx.coffre = m[1];
     }
+    // Titre d'embed sans verbe d'action = nom du coffre (ex. "Flat 3 Quartier 1")
+    const embedTitle = clean(msg.embeds?.[0]?.title || '');
+    if (!ctx.coffre && embedTitle && cfg.coffreFromTitle !== false && !detectAction(embedTitle) && embedTitle.length <= 60) {
+      ctx.coffre = embedTitle;
+    }
 
     // 2. Champs clé/valeur
     const itemVal = findKey(pairs, 'item');

@@ -83,7 +83,7 @@ export function makeIngestor(db, parse) {
     txs.forEach((t, i) => {
       const r = insTx.run(msg.id, i, msg.channelId ?? null, msg.ts, t.coffre, t.player, t.player_id,
         t.action, t.kind, t.item, t.quantity, t.amount, i === 0 ? raw : null);
-      if (r.changes) added.push({ ...t, id: Number(r.lastInsertRowid), message_id: msg.id, ts: msg.ts });
+      if (r.changes) added.push({ ...t, id: Number(r.lastInsertRowid), message_id: msg.id, channel_id: msg.channelId ?? null, ts: msg.ts });
     });
     if (emit && added.length) bus.emit('tx', added);
     return added;

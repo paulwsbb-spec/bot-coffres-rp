@@ -89,6 +89,20 @@ test('coffre par défaut du salon', () => {
   assert.equal(t.action, 'withdraw');
 });
 
+test('vrai format serveur : titre = coffre, argent sale en "x"', () => {
+  const t = one({ embeds: [{ title: 'Flat 3 Quartier 1', description: '**Jean Martin** a déposé 73570x Argent Sale' }] });
+  assert.deepEqual(t, { action: 'deposit', kind: 'money', item: 'black_money', quantity: 73570, amount: 73570, player: 'Jean Martin', player_id: null, coffre: 'Flat 3 Quartier 1' });
+});
+
+test('vrai format serveur : retrait d\'item', () => {
+  const t = one({ embeds: [{ title: 'Flat 3 Quartier 1', description: '**Paul Durand** a retiré 12x Pistolet' }] });
+  assert.equal(t.action, 'withdraw');
+  assert.equal(t.kind, 'item');
+  assert.equal(t.item, 'Pistolet');
+  assert.equal(t.quantity, 12);
+  assert.equal(t.coffre, 'Flat 3 Quartier 1');
+});
+
 test('message non pertinent ignoré', () => {
   assert.deepEqual(parse({ content: 'Serveur redémarré, bon jeu à tous' }), []);
 });

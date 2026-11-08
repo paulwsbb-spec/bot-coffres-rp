@@ -83,20 +83,23 @@ const pickChannel = async (q, optional = false) => {
     console.log(C.r('  Numéro ou nom invalide.'));
   }
 };
-const logCh = await pickChannel('\nNuméro du salon où arrivent les LOGS du webhook');
+// Salons où arrivent les logs (un salon par coffre, ex. #flat-3-1 … #flat-3-4)
+const detected = chans.filter((c) => /^(flat|cave|garage|coffre|stash|planque)/i.test(c.name));
+console.log(`\n${C.b('Salons de LOGS (où le webhook poste les dépôts/retraits)')}`);
+if (detected.length) console.log(`  Détectés : ${detected.map((c) => `${chans.indexOf(c) + 1}=#${c.name}`).join('  ')}`);
+let logChans = [];
+while (!logChans.length) {
+  const v = await ask('Numéros des salons de logs, séparés par des virgules', detected.map((c) => chans.indexOf(c) + 1).join(','));
+  logChans = v.split(/[,\s]+/).map((x) => chans[Number(x) - 1] || chans.find((c) => c.name === x.replace(/^#/, ''))).filter(Boolean);
+  if (!logChans.length) console.log(C.r('  Aucun salon valide.'));
+}
 const alertCh = await pickChannel('Numéro du salon pour les ALERTES gros retraits (Entrée = aucun)', true);
-
-// 5. Salons des coffres
-const looksLikeCoffre = chans.filter((c) => c.id !== logCh.id && /^flat-|coffre|stash/i.test(c.name));
-console.log(`\n${C.b('Salons de coffres détectés')} ${C.d('(les mouvements y seront rangés selon le nom du coffre dans le log)')}`);
-looksLikeCoffre.forEach((c) => console.log(`  • #${c.name}`));
-const extra = await ask('Autres salons de coffres ? (numéros séparés par des virgules, Entrée = non)', '');
-const coffreChans = [...looksLikeCoffre, ...extra.split(',').map((x) => chans[Number(x.trim()) - 1]).filter(Boolean)];
+const coffreChans = [];
 
 // 6. Vérifie les accès (salons privés : le rôle du bot doit y être ajouté)
 console.log(`\n${C.b('Vérification des accès…')}`);
 let missing = 0;
-for (const c of [logCh, alertCh, ...coffreChans].filter(Boolean)) {
+for (const c of [...logChans, alertCh, ...coffreChans].filter(Boolean)) {
   const r = await api(`/channels/${c.id}/messages?limit=1`);
   if (r.ok) console.log(C.g(`  ✔ #${c.name}`));
   else { missing++; console.log(C.r(`  ✘ #${c.name} : pas d'accès (${r.status})`)); }
@@ -109,10 +112,11 @@ if (missing) {
 
 // 7. Écrit la config
 const cfg = fs.existsSync(cfgFile) ? JSON.parse(fs.readFileSync(cfgFile, 'utf8')) : {};
-cfg.channels = { [logCh.id]: { coffre: null, label: logCh.name } };
+// coffre = titre de l'embed ("Flat 3 Quartier 1") ; à défaut, nom du salon
+cfg.channels = Object.fromEntries(logChans.map((c) => [c.id, { coffre: c.name, label: c.name }]));
 cfg.alertChannelId = alertCh?.id || '';
 cfg.autoRoute = true;
-cfg.routing = Object.fromEntries(coffreChans.map((c) => [c.name, c.id]));
+cfg.routing = {};
 fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2) + '\n');
 
 const port = env.DASHBOARD_PORT || '3000';
@@ -127,8 +131,8 @@ const newEnv = {
 fs.writeFileSync(envFile, Object.entries(newEnv).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');
 
 console.log(C.g(`\n✔ Configuration enregistrée (.env + config.json)`));
-console.log(`  Logs lus dans   : #${logCh.name}`);
-console.log(`  Rangés dans     : ${coffreChans.map((c) => '#' + c.name).join(', ') || '—'}`);
+console.log(`  Logs lus dans   : ${logChans.map((c) => '#' + c.name).join(', ')}`);
+console.log(`  Panneau d'état  : épinglé dans chacun de ces salons`);
 console.log(`  Alertes         : ${alertCh ? '#' + alertCh.name : 'désactivées'}`);
 console.log(`\n${C.b('Lance le bot')} : tape ${C.y('npm start')} dans cette fenêtre (et laisse-la ouverte)`);
 console.log(`Puis dans Discord : ${C.y('/salons')} pour vérifier, ${C.y('/classer')} pour ranger l'historique.\n`);

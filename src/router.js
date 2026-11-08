@@ -41,6 +41,16 @@ export function createRouter({ client, db, cfg, stats, env }) {
     return g.channels.cache.find((c) => c.isTextBased?.() && !c.isThread?.() && !logChannelIds.has(c.id) && slugify(c.name) === slug) || null;
   }
 
+  /** Salon de logs d'où viennent le plus souvent les mouvements de ce coffre */
+  const sourceStmt = db.prepare(`SELECT channel_id, COUNT(*) AS n FROM transactions WHERE coffre = ? AND channel_id IS NOT NULL
+    GROUP BY channel_id ORDER BY n DESC LIMIT 1`);
+  function sourceChannel(coffre) {
+    const id = sourceStmt.get(coffre)?.channel_id;
+    return id && logChannelIds.has(id) ? guild()?.channels.cache.get(id) || null : null;
+  }
+  /** Où mettre le panneau : salon dédié s'il existe, sinon le salon où arrivent ses logs */
+  const panelChannel = (coffre) => channelFor(coffre) || sourceChannel(coffre);
+
   function canWrite(ch) {
     const me = ch.guild?.members.me;
     if (!me) return false;
@@ -53,11 +63,15 @@ export function createRouter({ client, db, cfg, stats, env }) {
 
   // ---------- Tri en temps réel ----------
   async function route(txs) {
-    if (cfg.autoRoute === false && !Object.keys(cfg.routing || {}).length) return;
     const byCoffre = new Map();
     for (const t of txs) byCoffre.set(t.coffre, [...(byCoffre.get(t.coffre) || []), t]);
     for (const [coffre, list] of byCoffre) {
+      schedulePanel(coffre);
+      if (cfg.autoRoute === false && !cfg.routing?.[coffre]) continue;
       const ch = channelFor(coffre);
+      // Le log est déjà dans son propre salon de coffre (ex. #flat-3-1) : rien à reposter
+      if (!ch && list.every((t) => logChannelIds.has(t.channel_id))) continue;
+      if (ch && list.every((t) => t.channel_id === ch.id)) continue;
       if (!ch) { warnOnce(`nochan:${coffre}`, `[tri] aucun salon trouvé pour le coffre "${coffre}" (crée #${slugify(coffre)} ou ajoute-le dans config.routing)`); continue; }
       if (!canWrite(ch)) { warnOnce(`perm:${ch.id}`, `[tri] le bot n'a pas accès à #${ch.name} — ajoute son rôle dans les permissions du salon`); continue; }
       const deposit = list.every((t) => t.action === 'deposit');
@@ -68,7 +82,6 @@ export function createRouter({ client, db, cfg, stats, env }) {
         .setDescription(list.map((t) => lineOf(t, { withTime: false })).join('\n').slice(0, 4000))
         .setTimestamp(list[0].ts);
       await ch.send({ embeds: [e] }).catch((err) => console.error(`[tri] #${ch.name} :`, err.message));
-      schedulePanel(coffre);
     }
   }
 
@@ -98,7 +111,7 @@ export function createRouter({ client, db, cfg, stats, env }) {
 
   async function updatePanel(coffre) {
     if (cfg.panels === false) return;
-    const ch = channelFor(coffre);
+    const ch = panelChannel(coffre);
     if (!ch || !canWrite(ch)) return;
     const embed = panelEmbed(coffre);
     const saved = getPanel.get(coffre);
@@ -157,7 +170,7 @@ export function createRouter({ client, db, cfg, stats, env }) {
   /** Diagnostic : quel coffre va dans quel salon */
   function mapping() {
     return stats.coffres().map(({ coffre, n }) => {
-      const ch = channelFor(coffre);
+      const ch = panelChannel(coffre);
       return { coffre, n, channel: ch ? `#${ch.name}` : null, ok: ch ? canWrite(ch) : false };
     });
   }
