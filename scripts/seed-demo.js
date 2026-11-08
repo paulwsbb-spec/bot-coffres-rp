@@ -22,10 +22,13 @@ const stats = createStats(db);
 let seed = 42;
 const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
-const COFFRES = ['flat-3-1', 'flat-3-2', 'flat-3-3', 'flat-3-4'];
+const COFFRES = ['Flat 3 Quartier 1', 'Flat 3 Quartier 2', 'Flat 3 Quartier 3', 'Flat 3 Quartier 4'];
 // Joueurs fictifs — comportement aléatoire identique pour tous (personne n'est désigné "suspect" dans la démo)
 const PLAYERS = ['Alex Moreau', 'Benji Costa', 'Carlos Vega', 'Diego Ramos', 'Enzo Ricci', 'Farid Nasri', 'Gino Russo', 'Hugo Lambert'].map((n, k) => [n, k + 1]);
-const ITEMS = [['Pain', 20], ['Eau', 20], ['Bandage', 10], ['Weed', 40], ['Cocaïne', 15], ['Lockpick', 5], ['WEAPON_PISTOL', 2], ['Munitions 9mm', 120], ['Kevlar', 3], ['Ordinateur', 1], ['Crochet', 4]];
+// Items du serveur (orthographe du jeu, ex. "crochettage")
+const ITEMS = [['Outil de crochettage', 6], ['Outil de crochettage', 6], ['Boîtier de piratage', 3], ['Boîtier de piratage', 3],
+  ['Cocaïne', 15], ['Cannabis', 20], ['Pochon De Mexicana', 15], ['Munition de pistolet', 60], ['Pistolet SNS (W6WEHSLTWU)', 1],
+  ['Ecstasy', 10], ['Disqueuse', 1], ['Boîtier Darknet', 1], ['Menu boeuf', 8], ['Bandage', 10]];
 
 function fakeTx(t) {
   const [player, id, role] = pick(PLAYERS);
@@ -37,7 +40,11 @@ function fakeTx(t) {
   const [item, maxQ] = pick(ITEMS);
   const qty = Math.max(1, Math.round(rnd() * maxQ));
   const fmtAmount = amount.toLocaleString('fr-FR').replace(/ /g, ' ');
-  // 4 formats différents pour prouver le parseur
+  // 3 fois sur 4 : format exact du serveur NLS (titre = coffre, "**Joueur** a déposé 12x Item")
+  if (rnd() < 0.75) {
+    return { ts: t, embeds: [{ title: coffre, description: `**${player}** a ${withdraw ? 'retiré' : 'déposé'} ${money ? `${amount}x Argent Sale` : `${qty}x ${item}`}`, fields: [] }] };
+  }
+  // sinon d'autres formats, pour prouver le parseur
   switch (Math.floor(rnd() * 4)) {
     case 0: return { ts: t, embeds: [{ title: `Coffre - ${withdraw ? 'Retrait' : 'Dépôt'}`, fields: [
       { name: 'Joueur', value: `${player} (ID ${id})` }, { name: 'Coffre', value: coffre },
@@ -57,8 +64,8 @@ function fakeTx(t) {
 let n = 0;
 const now = Date.now();
 inTransaction(db, () => {
-  for (let day = 45; day >= 0; day--) {
-    const count = 20 + Math.floor(rnd() * 40) + (day < 10 ? 25 : 0);
+  for (let day = 21; day >= 0; day--) {
+    const count = 25 + Math.floor(rnd() * 35);
     for (let k = 0; k < count; k++) {
       const hour = rnd() < 0.75 ? 18 + Math.floor(rnd() * 7) : Math.floor(rnd() * 24);
       const t = now - day * 86400e3 - ((24 - hour) % 24) * 3600e3 - Math.floor(rnd() * 3600e3);
