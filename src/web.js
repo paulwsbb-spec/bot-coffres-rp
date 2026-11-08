@@ -75,8 +75,13 @@ export function startWeb({ stats, cfg, env, getStatus = () => ({}) }) {
     '/api/timeline': (f) => stats.timeline(f),
     '/api/players': (f, q) => stats.players(f, { sort: q.get('sort') || 'activity', limit: q.get('limit') || 50 }),
     '/api/weeks': (f) => stats.weeks({ coffre: f.coffre }),
-    '/api/key-items': (f) => (cfg.kpiItems || ['Outil de crochetage', 'Boîtier de piratage'])
-      .map((it) => stats.itemDetail({ ...f, item: null }, it)),
+    '/api/key-items': (f, q) => {
+      const wk = Number(q.get('week'));
+      const g = wk ? { ...f, from: wk, to: weekEnd(wk) - 1 } : f;
+      return (cfg.kpiItems || ['Outil de crochetage', 'Boîtier de piratage']).map((it) => stats.itemDetail({ ...g, item: null }, it));
+    },
+    '/api/week-report': (f, q) => stats.weekReport(Number(q.get('week')) || weekStart(), { coffre: f.coffre },
+      cfg.kpiItems || ['Outil de crochetage', 'Boîtier de piratage']),
     '/api/ranking': (f, q) => ({
       start: Number(q.get('week')) || weekStart(),
       next_reset: weekEnd(weekStart()),

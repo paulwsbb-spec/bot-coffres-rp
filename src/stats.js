@@ -156,6 +156,33 @@ export function createStats(db) {
         .map((p, k) => ({ rank: k + 1, ...p, deposited: p.cash_in + p.black_in, withdrawn: p.cash_out + p.black_out }));
     },
 
+    /** Bilan complet d'une semaine, joueur par joueur (argent + items clés) */
+    weekReport(start = weekStart(), f = {}, keyItems = []) {
+      const end = weekEnd(start);
+      const w = buildWhere({ ...f, from: start, to: end - 1 }, ['player IS NOT NULL']);
+      const cols = keyItems.map((_, k) => `
+        COALESCE(SUM(CASE WHEN kind='item' AND item = ? COLLATE NOCASE AND action='deposit'  THEN quantity END),0) AS i${k}_in,
+        COALESCE(SUM(CASE WHEN kind='item' AND item = ? COLLATE NOCASE AND action='withdraw' THEN quantity END),0) AS i${k}_out`).join(',');
+      const rows = all(`SELECT player, COUNT(*) AS n, ${MONEY_SUMS}${cols ? `,${cols}` : ''}
+                        FROM transactions ${w.sql} GROUP BY player COLLATE NOCASE`,
+      [...keyItems.flatMap((it) => [it, it]), ...w.params]);
+      const players = rows.map((r) => ({
+        player: r.player, n: r.n,
+        deposited: r.cash_in + r.black_in, withdrawn: r.cash_out + r.black_out,
+        items_in: r.items_in, items_out: r.items_out,
+        keys: keyItems.map((it, k) => ({ item: it, in: r[`i${k}_in`], out: r[`i${k}_out`] })),
+      })).sort((a, b) => b.deposited - a.deposited || b.n - a.n);
+      const sum = (fn) => players.reduce((s, p) => s + fn(p), 0);
+      return {
+        start, end, current: start === weekStart(),
+        totals: {
+          deposited: sum((p) => p.deposited), withdrawn: sum((p) => p.withdrawn), n: sum((p) => p.n),
+          keys: keyItems.map((it, k) => ({ item: it, in: sum((p) => p.keys[k].in), out: sum((p) => p.keys[k].out) })),
+        },
+        players,
+      };
+    },
+
     /** Détail d'un item : entrées/sorties sur la période, stock, et qui a déposé / pris */
     itemDetail(f, item) {
       const g = { ...f, item, kind: 'item' };

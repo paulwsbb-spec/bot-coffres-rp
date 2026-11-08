@@ -35,6 +35,10 @@
 
     <section class="kpis" id="kpis"></section>
 
+    <div class="section-bar">
+      <h2>Items clés</h2>
+      <select id="week-items" class="small" aria-label="Semaine des items"></select>
+    </div>
     <section class="key-items" id="key-items"></section>
 
     <section class="grid g-2-1">
@@ -108,6 +112,17 @@
       <ul id="unparsed"></ul>
     </details>
   </main>
+
+  <dialog id="report" class="report">
+    <header class="report-h">
+      <h2>📊 Bilan de la semaine</h2>
+      <div class="report-actions">
+        <select id="week-report" class="small" aria-label="Semaine du bilan"></select>
+        <button id="report-close" class="btn ghost" type="button" aria-label="Fermer">✕</button>
+      </div>
+    </header>
+    <div id="report-body"></div>
+  </dialog>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="app.js"></script>

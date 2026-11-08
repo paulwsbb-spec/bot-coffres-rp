@@ -52,7 +52,11 @@ async function loadCoffres() {
       <div class="bal ${bal < 0 ? 'neg' : ''}">${compact(bal)}</div>
       <div class="sub">dans le coffre · dernier ${c.last_ts ? ago(c.last_ts) : '—'}</div>
     </button>`;
-  }).join('');
+  }).join('') + `<button class="coffre-card report-card" id="open-report" type="button">
+      <div class="name">📊 Bilan semaine<span>ouvrir →</span></div>
+      <div class="bal">Par joueur</div>
+      <div class="sub">argent · crochetage · piratage</div>
+    </button>`;
 }
 
 /* ---------- KPIs ---------- */
@@ -79,19 +83,28 @@ function itemCard(icon, d) {
   </article>`;
 }
 
+/** Crochetage / piratage : suivent la semaine choisie (comme le classement) */
+let keyReq = 0;
+async function loadKeyItems() {
+  if (!weeks.length) await loadWeeks();
+  const id = ++keyReq;
+  const week = state.week;
+  const keys = await api('key-items', { week, period: '', player: '', item: '' }).catch(() => []);
+  if (id !== keyReq) return;
+  $('#key-items').innerHTML = keys.map((d, k) => itemCard(['🔓', '💻'][k] || '📦', d)).join('');
+}
+
 async function loadSummary() {
-  const [s, keys] = await Promise.all([api('summary'), api('key-items').catch(() => [])]);
+  const s = await api('summary');
   const out = s.cash_out + s.black_out;
   const total = s.cash_balance + s.black_balance;
   const since = s.anchored_at ? `solde saisi le ${dateFmt.format(s.anchored_at)}` : 'tape /solde pour régler le montant réel';
-  const icons = ['🔓', '💻'];
   $('#kpis').innerHTML = [
     kpi('💰 Argent dans le coffre', compact(total), `sale ${compact(s.black_balance)} · propre ${compact(s.cash_balance)}<br>${since}`, 'var(--brand)', total < 0 ? 'neg' : ''),
     kpi('Argent retiré', compact(out), `dont sale ${compact(s.black_out)}`, 'var(--out)', 'neg'),
     kpi('Items entrés / sortis', `${nf.format(s.items_in)} / ${nf.format(s.items_out)}`, `net ${s.items_in - s.items_out >= 0 ? '+' : ''}${nf.format(s.items_in - s.items_out)}`, 'var(--black)'),
     kpi('Joueurs actifs', nf.format(s.players), `${s.coffres} coffre(s) · ${nf.format(s.n)} mouvements`, 'var(--line-2)'),
   ].join('');
-  $('#key-items').innerHTML = keys.map((d, k) => itemCard(icons[k] || '📦', d)).join('');
   $('#unparsed-n').textContent = nf.format(s.unparsed);
 }
 
@@ -142,9 +155,50 @@ let nextReset = 0;
 
 async function loadWeeks() {
   weeks = await api('weeks', { period: '', player: '' });
-  const sel = $('#week');
   if (!weeks.some((w) => String(w.start) === String(state.week))) state.week = String(weeks[0]?.start || '');
-  sel.innerHTML = weeks.map((w) => `<option value="${w.start}" ${String(w.start) === String(state.week) ? 'selected' : ''}>${weekLabel(w)}${w.top ? ` · 🥇 ${esc(w.top.player)}` : ''}</option>`).join('');
+  fillWeekSelect($('#week'), state.week, true);
+  fillWeekSelect($('#week-items'), state.week);
+}
+function fillWeekSelect(sel, value, withTop = false) {
+  if (!sel) return;
+  sel.innerHTML = weeks.map((w) => `<option value="${w.start}" ${String(w.start) === String(value) ? 'selected' : ''}>${weekLabel(w)}${withTop && w.top ? ` · 🥇 ${esc(w.top.player)}` : ''}</option>`).join('');
+}
+const loadWeekly = () => loadWeeks().then(() => Promise.all([loadPlayers(), loadKeyItems()]));
+const setWeek = (v) => { state.week = String(v); $('#week').value = state.week; $('#week-items').value = state.week; loadPlayers(); loadKeyItems(); };
+
+/* ---------- Bilan de la semaine (fenêtre) ---------- */
+let reportWeek = '';
+async function openReport(week = reportWeek) {
+  if (!weeks.length) await loadWeeks();
+  reportWeek = String(week || weeks[0]?.start || '');
+  fillWeekSelect($('#week-report'), reportWeek);
+  const dlg = $('#report');
+  if (!dlg.open) dlg.showModal();
+  $('#report-body').innerHTML = '<div class="empty">Chargement…</div>';
+  const r = await api('week-report', { week: reportWeek, period: '', player: '' });
+  const dfmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const pm = (i, o) => `${i ? `<b class="pos">+${nf.format(i)}</b>` : ''}${i && o ? ' ' : ''}${o ? `<b class="neg">−${nf.format(o)}</b>` : ''}${!i && !o ? '<span class="faint">—</span>' : ''}`;
+  const tiles = [
+    ['💵 Argent déposé', `<span class="pos">${compact(r.totals.deposited)}</span>`],
+    ['💸 Argent retiré', `<span class="neg">${compact(r.totals.withdrawn)}</span>`],
+    ...r.totals.keys.map((k, i) => [`${['🔓', '💻'][i] || '📦'} ${esc(k.item)}`, pm(k.in, k.out)]),
+  ];
+  $('#report-body').innerHTML = `
+    <p class="muted report-range">${r.current ? '🟢 Semaine en cours' : '📁 Semaine archivée'} · du ${dfmt.format(r.start)} au ${dfmt.format(r.end)} · ${nf.format(r.totals.n)} mouvements</p>
+    <div class="report-tiles">${tiles.map(([l, v]) => `<div><span class="muted">${l}</span><div class="v">${v}</div></div>`).join('')}</div>
+    <div class="table-wrap report-table"><table>
+      <thead><tr><th>#</th><th>Joueur</th><th class="num">Déposé</th><th class="num">Retiré</th>
+        ${r.totals.keys.map((k, i) => `<th class="num">${['🔓', '💻'][i] || ''} ${esc((w => w.charAt(0).toUpperCase() + w.slice(1))(k.item.split(' ').pop()))}</th>`).join('')}
+        <th class="num">Items +/−</th><th class="num">Mvts</th></tr></thead>
+      <tbody>${r.players.map((p, k) => `<tr>
+        <td class="medal">${['🥇', '🥈', '🥉'][k] && p.deposited > 0 ? ['🥇', '🥈', '🥉'][k] : `<span class="rank">${k + 1}</span>`}</td>
+        <td><b>${esc(p.player)}</b></td>
+        <td class="num pos">${p.deposited ? compact(p.deposited) : '<span class="faint">—</span>'}</td>
+        <td class="num neg">${p.withdrawn ? compact(p.withdrawn) : '<span class="faint">—</span>'}</td>
+        ${p.keys.map((x) => `<td class="num">${pm(x.in, x.out)}</td>`).join('')}
+        <td class="num">${pm(p.items_in, p.items_out)}</td>
+        <td class="num">${nf.format(p.n)}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">Aucun mouvement cette semaine pour l\'instant</td></tr>'}</tbody>
+    </table></div>`;
 }
 
 function renderCountdown() {
@@ -152,7 +206,7 @@ function renderCountdown() {
   if (!w) { $('#week-info').textContent = ''; return; }
   if (!w.current) { $('#week-info').innerHTML = `📁 Semaine archivée · total déposé <b>${compact(w.deposited)}</b>`; return; }
   const ms = Math.max(0, nextReset - Date.now());
-  if (nextReset && ms === 0) { nextReset = 0; state.week = ''; loadWeeks().then(loadPlayers); return; } // dimanche 19h : nouvelle semaine
+  if (nextReset && ms === 0) { nextReset = 0; state.week = ''; loadWeekly(); return; } // dimanche 19h : nouvelle semaine
   const d = Math.floor(ms / 86400e3); const h = Math.floor(ms / 3600e3) % 24; const m = Math.floor(ms / 60e3) % 60;
   $('#week-info').innerHTML = `⏳ Nouvelle semaine dans <b>${d ? `${d} j ` : ''}${h} h ${String(m).padStart(2, '0')}</b> (dimanche 19h) · total déposé <b>${compact(w.deposited)}</b>`;
 }
@@ -284,7 +338,7 @@ function renderChips() {
 
 async function refreshAll() {
   renderChips();
-  const jobs = [loadCoffres(), loadSummary(), loadTimeline(), loadWeeks().then(loadPlayers), loadItems(), loadHeatmap(), loadAlerts(), loadTx(), loadUnparsed()];
+  const jobs = [loadCoffres(), loadSummary(), loadTimeline(), loadWeekly(), loadItems(), loadHeatmap(), loadAlerts(), loadTx(), loadUnparsed()];
   const res = await Promise.allSettled(jobs);
   res.filter((r) => r.status === 'rejected').forEach((r) => console.error(r.reason));
 }
@@ -292,7 +346,7 @@ async function refreshAll() {
 let pending;
 const softRefresh = () => {
   clearTimeout(pending);
-  pending = setTimeout(() => Promise.allSettled([loadCoffres(), loadSummary(), loadTimeline(), loadWeeks().then(loadPlayers), loadItems(), loadAlerts(), state.offset === 0 ? loadTx() : null]), 1500);
+  pending = setTimeout(() => Promise.allSettled([loadCoffres(), loadSummary(), loadTimeline(), loadWeekly(), loadItems(), loadAlerts(), state.offset === 0 ? loadTx() : null]), 1500);
 };
 
 async function loadStatus() {
@@ -331,7 +385,12 @@ $('#item-mode').addEventListener('click', (e) => {
   state.itemMode = m; setSeg('#item-mode', 'm', m); loadItems();
 });
 $('#coffre').addEventListener('change', (e) => { state.coffre = e.target.value; state.offset = 0; refreshAll(); });
-$('#week').addEventListener('change', (e) => { state.week = e.target.value; loadPlayers(); });
+$('#week').addEventListener('change', (e) => setWeek(e.target.value));
+$('#week-items').addEventListener('change', (e) => setWeek(e.target.value));
+$('#week-report').addEventListener('change', (e) => openReport(e.target.value));
+$('#report-close').addEventListener('click', () => $('#report').close());
+$('#report').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }); // clic hors de la fenêtre
+document.addEventListener('click', (e) => { if (e.target.closest('#open-report')) openReport(''); });
 let qTimer;
 $('#q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.offset = 0; loadTx(); }, 250); });
 $('#f-action').addEventListener('change', () => { state.offset = 0; loadTx(); });

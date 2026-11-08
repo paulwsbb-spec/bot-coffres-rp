@@ -141,6 +141,29 @@ tbody tr:hover td { background: rgba(255, 255, 255, .02); }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; overflow: hidden; display: flex; }
 .bar i { display: block; height: 100%; }
 
+/* Carte "Bilan semaine" dans la rangée des coffres */
+.report-card { border-color: rgba(215, 31, 38, .55); background: linear-gradient(160deg, rgba(215, 31, 38, .22), var(--card) 70%); }
+.report-card .name span { color: var(--brand); font-weight: 700; }
+.report-card .bal { font-family: Inter, sans-serif; font-weight: 800; }
+.report-card:hover { border-color: var(--brand); box-shadow: 0 0 24px rgba(215, 31, 38, .25); }
+
+/* Fenêtre du bilan */
+dialog.report { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line-2); border-radius: 18px; background: var(--card); color: var(--text); box-shadow: 0 30px 90px rgba(0, 0, 0, .8); }
+dialog.report::backdrop { background: rgba(0, 0, 0, .72); backdrop-filter: blur(4px); }
+.report-h { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--line); }
+.report-h h2::after { content: ''; display: block; width: 28px; height: 2px; margin-top: 5px; background: var(--brand); }
+.report-actions { display: flex; gap: 8px; align-items: center; }
+#report-body { padding: 16px 20px 22px; }
+.report-range { margin: 0 0 14px; }
+.report-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.report-tiles > div { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.report-tiles .v { font-family: var(--mono); font-size: 20px; font-weight: 600; margin-top: 4px; }
+.report-table { max-height: none; }
+.faint { color: var(--faint); }
+
+.section-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: -6px; }
+.section-bar h2::after { content: ''; display: block; width: 28px; height: 2px; margin-top: 5px; background: var(--brand); }
+
 /* Ligne des items clés (crochetage / piratage) */
 .key-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .key-items:empty { display: none; }
