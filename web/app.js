@@ -116,20 +116,46 @@ async function loadTimeline() {
   chart = new Chart($('#timeline'), cfg);
 }
 
-/* ---------- Joueurs ---------- */
+/* ---------- Classement hebdo (dimanche 19h → dimanche 19h), trié par argent déposé ---------- */
+const dayFmt = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit' });
+const weekLabel = (w) => (w.current ? 'Semaine en cours' : `Du ${dayFmt.format(w.start)} au ${dayFmt.format(w.end)}`);
+let weeks = [];
+let nextReset = 0;
+
+async function loadWeeks() {
+  weeks = await api('weeks', { period: '', player: '' });
+  const sel = $('#week');
+  if (!weeks.some((w) => String(w.start) === String(state.week))) state.week = weeks[0]?.start || '';
+  sel.innerHTML = weeks.map((w) => `<option value="${w.start}" ${String(w.start) === String(state.week) ? 'selected' : ''}>${weekLabel(w)}${w.top ? ` · 🥇 ${esc(w.top.player)}` : ''}</option>`).join('');
+}
+
+function renderCountdown() {
+  const w = weeks.find((x) => String(x.start) === String(state.week));
+  if (!w) { $('#week-info').textContent = ''; return; }
+  if (!w.current) { $('#week-info').innerHTML = `📁 Semaine archivée · total déposé <b>${compact(w.deposited)}</b>`; return; }
+  const ms = Math.max(0, nextReset - Date.now());
+  if (nextReset && ms === 0) { nextReset = 0; state.week = ''; loadWeeks().then(loadPlayers); return; } // dimanche 19h : nouvelle semaine
+  const d = Math.floor(ms / 86400e3); const h = Math.floor(ms / 3600e3) % 24; const m = Math.floor(ms / 60e3) % 60;
+  $('#week-info').innerHTML = `⏳ Nouvelle semaine dans <b>${d ? `${d} j ` : ''}${h} h ${String(m).padStart(2, '0')}</b> (dimanche 19h) · total déposé <b>${compact(w.deposited)}</b>`;
+}
+setInterval(renderCountdown, 30000);
+
 async function loadPlayers() {
-  const rows = await api('players', { sort: state.playerSort, limit: 50, player: '' });
-  if (!rows.length) { $('#players').innerHTML = '<tr><td class="empty">Aucune donnée</td></tr>'; return; }
-  const max = Math.max(...rows.map((p) => p.cash_in + p.black_in + p.cash_out + p.black_out), 1);
-  $('#players').innerHTML = `<thead><tr><th>Joueur</th><th class="num">Mvts</th><th class="num">Déposé</th><th class="num">Retiré</th><th class="num">Bilan</th><th class="num">Items +/−</th></tr></thead><tbody>` +
-    rows.map((p) => {
-      const inn = p.cash_in + p.black_in; const out = p.cash_out + p.black_out; const net = inn - out;
-      return `<tr><td><span class="link" data-player="${esc(p.player)}">${esc(p.player)}</span>
-        <div class="bar" style="width:${Math.max(4, ((inn + out) / max) * 100)}%"><i style="width:${(inn / Math.max(inn + out, 1)) * 100}%;background:var(--in)"></i><i style="flex:1;background:var(--out)"></i></div></td>
-        <td class="num">${nf.format(p.n)}</td><td class="num pos">${compact(inn)}</td><td class="num neg">${compact(out)}</td>
-        <td class="num ${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${compact(net)}</td>
-        <td class="num"><span class="pos">+${nf.format(p.items_in)}</span> / <span class="neg">−${nf.format(p.items_out)}</span></td></tr>`;
-    }).join('') + '</tbody>';
+  if (!weeks.length) await loadWeeks();
+  const { rows, next_reset: nr } = await api('ranking', { week: state.week, period: '', player: '' });
+  nextReset = nr;
+  renderCountdown();
+  const ranked = rows.filter((p) => p.deposited > 0);
+  if (!ranked.length) { $('#players').innerHTML = '<tr><td class="empty">Aucun dépôt d\'argent cette semaine pour l\'instant</td></tr>'; return; }
+  const max = Math.max(...ranked.map((p) => p.deposited), 1);
+  const medal = (r) => ['🥇', '🥈', '🥉'][r - 1] || `<span class="rank">${r}</span>`;
+  $('#players').innerHTML = `<thead><tr><th>#</th><th>Joueur</th><th class="num">Argent déposé</th><th class="num">Retiré</th><th class="num">Mvts</th></tr></thead><tbody>` +
+    ranked.map((p, k) => `<tr class="${k < 3 ? 'podium' : ''}"><td class="medal">${medal(k + 1)}</td>
+      <td><span class="link" data-player="${esc(p.player)}">${esc(p.player)}</span>
+        <div class="bar" style="width:${Math.max(4, (p.deposited / max) * 100)}%"><i style="flex:1;background:var(--in)"></i></div></td>
+      <td class="num pos"><b>${compact(p.deposited)}</b></td>
+      <td class="num ${p.withdrawn ? 'neg' : 'muted'}">${p.withdrawn ? compact(p.withdrawn) : '—'}</td>
+      <td class="num">${nf.format(p.n)}</td></tr>`).join('') + '</tbody>';
 }
 
 /* ---------- Items ---------- */
@@ -235,7 +261,7 @@ function renderChips() {
 
 async function refreshAll() {
   renderChips();
-  const jobs = [loadCoffres(), loadSummary(), loadTimeline(), loadPlayers(), loadItems(), loadHeatmap(), loadAlerts(), loadTx(), loadUnparsed()];
+  const jobs = [loadCoffres(), loadSummary(), loadTimeline(), loadWeeks().then(loadPlayers), loadItems(), loadHeatmap(), loadAlerts(), loadTx(), loadUnparsed()];
   const res = await Promise.allSettled(jobs);
   res.filter((r) => r.status === 'rejected').forEach((r) => console.error(r.reason));
 }
@@ -243,7 +269,7 @@ async function refreshAll() {
 let pending;
 const softRefresh = () => {
   clearTimeout(pending);
-  pending = setTimeout(() => Promise.allSettled([loadCoffres(), loadSummary(), loadTimeline(), loadPlayers(), loadItems(), loadAlerts(), state.offset === 0 ? loadTx() : null]), 1500);
+  pending = setTimeout(() => Promise.allSettled([loadCoffres(), loadSummary(), loadTimeline(), loadWeeks().then(loadPlayers), loadItems(), loadAlerts(), state.offset === 0 ? loadTx() : null]), 1500);
 };
 
 async function loadStatus() {
@@ -282,7 +308,7 @@ $('#item-mode').addEventListener('click', (e) => {
   state.itemMode = m; setSeg('#item-mode', 'm', m); loadItems();
 });
 $('#coffre').addEventListener('change', (e) => { state.coffre = e.target.value; state.offset = 0; refreshAll(); });
-$('#player-sort').addEventListener('change', (e) => { state.playerSort = e.target.value; persist(); loadPlayers(); });
+$('#week').addEventListener('change', (e) => { state.week = e.target.value; loadPlayers(); });
 let qTimer;
 $('#q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.offset = 0; loadTx(); }, 250); });
 $('#f-action').addEventListener('change', () => { state.offset = 0; loadTx(); });
@@ -307,7 +333,6 @@ document.addEventListener('click', (e) => {
 Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
 setSeg('#period', 'p', state.period);
 setSeg('#tl-mode', 'm', state.tlMode);
-$('#player-sort').value = state.playerSort;
 refreshAll();
 loadFeed();
 loadStatus();

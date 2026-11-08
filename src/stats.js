@@ -35,6 +35,19 @@ export function periodToRange(period) {
   return { from: Date.now() - n * unit };
 }
 
+/** Début de la semaine de classement contenant `ts` : le dimanche 19h précédent (heure du PC). */
+export function weekStart(ts = Date.now()) {
+  const d = new Date(ts);
+  const s = new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 19, 0, 0, 0);
+  if (s.getTime() > ts) s.setDate(s.getDate() - 7);
+  return s.getTime();
+}
+export function weekEnd(start) {
+  const e = new Date(start);
+  e.setDate(e.getDate() + 7);
+  return e.getTime();
+}
+
 export function createStats(db) {
   const all = (sql, params = []) => db.prepare(sql).all(...params);
   const get = (sql, params = []) => db.prepare(sql).get(...params);
@@ -119,6 +132,28 @@ export function createStats(db) {
                   COUNT(DISTINCT coffre) AS coffres, ${MONEY_SUMS}
                   FROM transactions ${w.sql} GROUP BY player COLLATE NOCASE ORDER BY ${order} LIMIT ?`,
       [...w.params, Number(limit)]);
+    },
+
+    /** Semaines de classement (la plus récente d'abord), avec le total déposé et le n°1 */
+    weeks(f = {}) {
+      const first = get('SELECT MIN(ts) AS t FROM transactions').t;
+      if (!first) return [];
+      const out = [];
+      for (let s = weekStart(Date.now()); s >= weekStart(first); ) {
+        const e = weekEnd(s);
+        const top = this.players({ ...f, from: s, to: e - 1 }, { sort: 'deposit', limit: 1 })[0];
+        const w = buildWhere({ ...f, from: s, to: e - 1 }, ["kind = 'money'", "action = 'deposit'"]);
+        out.push({ start: s, end: e, current: out.length === 0, deposited: get(`SELECT COALESCE(SUM(amount),0) AS v FROM transactions ${w.sql}`, w.params).v,
+          top: top && top.cash_in + top.black_in > 0 ? { player: top.player, deposited: top.cash_in + top.black_in } : null });
+        const p = new Date(s); p.setDate(p.getDate() - 7); s = p.getTime();
+      }
+      return out;
+    },
+
+    /** Classement d'une semaine : joueurs triés par argent déposé */
+    ranking(start = weekStart(), f = {}, limit = 50) {
+      return this.players({ ...f, from: start, to: weekEnd(start) - 1 }, { sort: 'deposit', limit })
+        .map((p, k) => ({ rank: k + 1, ...p, deposited: p.cash_in + p.black_in, withdrawn: p.cash_out + p.black_out }));
     },
 
     items(f, { limit = 100 } = {}) {

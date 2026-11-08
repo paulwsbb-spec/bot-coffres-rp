@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { bus } from './db.js';
 import { ROOT } from './config.js';
-import { periodToRange } from './stats.js';
+import { periodToRange, weekStart, weekEnd } from './stats.js';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png' };
 const WEB_DIR = path.join(ROOT, 'web');
@@ -74,6 +74,12 @@ export function startWeb({ stats, cfg, env, getStatus = () => ({}) }) {
     '/api/summary': (f) => stats.summary(f),
     '/api/timeline': (f) => stats.timeline(f),
     '/api/players': (f, q) => stats.players(f, { sort: q.get('sort') || 'activity', limit: q.get('limit') || 50 }),
+    '/api/weeks': (f) => stats.weeks({ coffre: f.coffre }),
+    '/api/ranking': (f, q) => ({
+      start: Number(q.get('week')) || weekStart(),
+      next_reset: weekEnd(weekStart()),
+      rows: stats.ranking(Number(q.get('week')) || weekStart(), { coffre: f.coffre }),
+    }),
     '/api/items': (f, q) => stats.items(f, { limit: q.get('limit') || 100 }),
     '/api/stock': (f) => stats.stock(f),
     '/api/heatmap': (f) => stats.heatmap(f),

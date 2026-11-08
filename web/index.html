@@ -52,15 +52,10 @@
     <section class="grid g-1-1">
       <article class="card">
         <header class="card-h">
-          <h2>Joueurs</h2>
-          <select id="player-sort" class="small">
-            <option value="activity">Plus actifs</option>
-            <option value="deposit">Plus gros dépôts</option>
-            <option value="withdraw">Plus gros retraits</option>
-            <option value="net">Bilan le plus négatif</option>
-            <option value="items_out">Items retirés</option>
-          </select>
+          <h2>Classement de la semaine</h2>
+          <select id="week" class="small" aria-label="Semaine"></select>
         </header>
+        <div class="week-info" id="week-info"></div>
         <div class="table-wrap"><table id="players"></table></div>
       </article>
       <article class="card">

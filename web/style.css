@@ -141,6 +141,13 @@ tbody tr:hover td { background: rgba(255, 255, 255, .02); }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; overflow: hidden; display: flex; }
 .bar i { display: block; height: 100%; }
 
+.week-info { color: var(--muted); font-size: 12px; margin: -6px 0 10px; }
+.week-info b { color: var(--text); }
+td.medal { width: 34px; font-size: 18px; text-align: center; }
+.rank { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--card-2); color: var(--muted); font-size: 12px; font-weight: 700; }
+tr.podium td { background: rgba(215, 31, 38, .05); }
+tr.podium .link { font-weight: 800; }
+#week { max-width: 230px; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .filters input { min-width: 240px; }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; }

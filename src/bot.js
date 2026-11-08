@@ -3,7 +3,7 @@ import {
   PermissionFlagsBits, REST, Routes,
 } from 'discord.js';
 import { bus, inTransaction, snowflakeGt, reparseAll } from './db.js';
-import { periodToRange } from './stats.js';
+import { periodToRange, weekStart, weekEnd } from './stats.js';
 import { createRouter, slugify } from './router.js';
 
 // ---------- Format ----------
@@ -67,6 +67,11 @@ export const commands = [
   new SlashCommandBuilder().setName('dashboard').setDescription('Lien vers le tableau de bord web'),
   new SlashCommandBuilder().setName('nonreconnus').setDescription('Logs que le parseur n\'a pas compris (pour ajuster les règles)')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  new SlashCommandBuilder().setName('classement').setDescription('Classement des joueurs par argent déposé (semaine du dimanche 19h au dimanche 19h)')
+    .addIntegerOption((o) => o.setName('semaine').setDescription('Quelle semaine').addChoices(
+      { name: 'Semaine en cours', value: 0 }, { name: 'Semaine dernière', value: 1 },
+      { name: 'Il y a 2 semaines', value: 2 }, { name: 'Il y a 3 semaines', value: 3 }))
+    .addStringOption(coffreOpt),
   new SlashCommandBuilder().setName('solde').setDescription('Indique combien il y a VRAIMENT dans un coffre maintenant (point de départ du calcul)')
     .addStringOption((o) => coffreOpt(o).setRequired(true))
     .addIntegerOption((o) => o.setName('montant').setDescription('Montant actuel dans le coffre, ex : 586737').setRequired(true).setMinValue(0))
@@ -314,6 +319,21 @@ export async function startBot({ db, cfg, env, stats, ingest }) {
         const total = stats.summary({}).unparsed;
         const body = rows.map((r) => `\`\`\`${JSON.stringify(JSON.parse(r.raw)).slice(0, 350)}\`\`\``).join('\n');
         return i.reply({ ephemeral: true, content: `**${total}** logs non reconnus. Derniers exemples :\n${body || '—'}`.slice(0, 2000) });
+      }
+
+      case 'classement': {
+        const back = i.options.getInteger('semaine') || 0;
+        const s = new Date(weekStart()); s.setDate(s.getDate() - 7 * back);
+        const start = s.getTime(); const end = weekEnd(start);
+        const rows = stats.ranking(start, { coffre }, 15).filter((p) => p.deposited > 0);
+        const d = (ms) => `<t:${Math.floor(ms / 1000)}:f>`;
+        const medal = (k) => ['🥇', '🥈', '🥉'][k] || `\`${String(k + 1).padStart(2)}\``;
+        const e = new EmbedBuilder().setColor(0xd71f26)
+          .setTitle(`🏆 Classement — ${back === 0 ? 'semaine en cours' : back === 1 ? 'semaine dernière' : `il y a ${back} semaines`}`)
+          .setDescription(`Du ${d(start)} au ${d(end)}${coffre ? ` · ${coffre}` : ''}\n\n` +
+            (rows.map((p, k) => `${medal(k)} **${p.player}** — ${$(p.deposited)} déposés`).join('\n') || 'Aucun dépôt d\'argent sur cette semaine.'))
+          .setFooter({ text: back === 0 ? 'Remise à zéro chaque dimanche à 19h' : 'Semaine archivée' });
+        return i.reply({ embeds: [e] });
       }
 
       case 'solde': {
