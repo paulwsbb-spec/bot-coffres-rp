@@ -175,7 +175,9 @@ async function openReport(week = reportWeek) {
   const dlg = $('#report');
   if (!dlg.open) dlg.showModal();
   $('#report-body').innerHTML = '<div class="empty">Chargement…</div>';
-  const r = await api('week-report', { week: reportWeek, period: '', player: '' });
+  let r;
+  try { r = await api('week-report', { week: reportWeek, period: '', player: '' }); }
+  catch { $('#report-body').innerHTML = '<div class="empty">Bilan indisponible : relance le bot (demarrer.bat) pour activer cette fonction.</div>'; return; }
   const dfmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const pm = (i, o) => `${i ? `<b class="pos">+${nf.format(i)}</b>` : ''}${i && o ? ' ' : ''}${o ? `<b class="neg">−${nf.format(o)}</b>` : ''}${!i && !o ? '<span class="faint">—</span>' : ''}`;
   const tiles = [
