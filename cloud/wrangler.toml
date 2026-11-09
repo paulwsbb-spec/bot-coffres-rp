@@ -5,3 +5,8 @@ compatibility_date = "2026-10-01"
 [[kv_namespaces]]
 binding = "NLS"
 id = "082b1c5680ed48df88ce5eaeb8a3391c"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nls-coffres"
+database_id = "c51cbdaa-2b7f-4ec7-8457-0d0059dc9d10"

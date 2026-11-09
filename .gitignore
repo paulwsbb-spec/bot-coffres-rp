@@ -7,3 +7,6 @@ tools/
 *.db
 *.db-*
 cloud/.wrangler/
+cloud/generated/
+cloud/public/*
+!cloud/public/.keep

@@ -358,10 +358,34 @@ async function loadStatus() {
   } catch { $('#status').textContent = 'Serveur injoignable'; }
 }
 
+// Version Cloudflare : pas de flux continu → on vérifie les nouveaux mouvements toutes les 30 s
+let lastSeenId = 0;
+let polling = null;
+async function pollNew() {
+  try {
+    const { rows } = await api('transactions', { limit: 25, period: '', player: '', coffre: '' });
+    const fresh = rows.filter((t) => t.id > lastSeenId).reverse();
+    if (lastSeenId && fresh.length) { fresh.forEach((t) => addFeed(t)); softRefresh(); }
+    if (rows.length) lastSeenId = Math.max(lastSeenId, ...rows.map((t) => t.id));
+    $('.live').classList.add('on');
+    $('#live-label').textContent = 'Auto';
+  } catch { $('.live').classList.remove('on'); }
+}
+function startPolling() {
+  if (polling) return;
+  pollNew();
+  polling = setInterval(pollNew, 30000);
+}
+
 function connectStream() {
   const es = new EventSource('/api/stream');
-  es.onopen = () => { $('.live').classList.add('on'); $('#live-label').textContent = 'Live'; };
-  es.onerror = () => { $('.live').classList.remove('on'); $('#live-label').textContent = 'Reconnexion…'; };
+  let opened = false;
+  es.onopen = () => { opened = true; $('.live').classList.add('on'); $('#live-label').textContent = 'Live'; };
+  es.onerror = () => {
+    $('.live').classList.remove('on');
+    $('#live-label').textContent = 'Reconnexion…';
+    if (!opened || es.readyState === EventSource.CLOSED) { es.close(); startPolling(); }
+  };
   es.addEventListener('tx', (e) => {
     const txs = JSON.parse(e.data);
     txs.forEach((t) => addFeed(t));

@@ -1,0 +1,17 @@
+name = "nls-coffres-bot"
+main = "index.js"
+compatibility_date = "2026-10-01"
+# Pas d'adresse publique : ce worker ne fait que le travail planifié (lecture des logs chaque minute).
+# Les commandes Discord arrivent sur https://nls-coffres.pages.dev/interactions
+workers_dev = false
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nls-coffres"
+database_id = "c51cbdaa-2b7f-4ec7-8457-0d0059dc9d10"
+
+[observability]
+enabled = true
