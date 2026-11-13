@@ -59,24 +59,33 @@ export function createStats(DB) {
   const all = async (sql, params = []) => (await DB.prepare(sql).bind(...params).all()).results || [];
   const get = async (sql, params = []) => (await DB.prepare(sql).bind(...params).first()) || {};
 
-  /** Argent dans chaque coffre : solde saisi (/solde) + mouvements depuis, sinon total des logs */
+  /**
+   * Argent dans chaque coffre, mouvement par mouvement dans l'ordre chronologique :
+   *  • départ = solde saisi avec /solde (sinon 0)
+   *  • un dépôt ajoute, un retrait enlève
+   *  • jamais en dessous de 0 : si on retire plus que ce que le bot connaît (argent mis avant le webhook,
+   *    coffre déplacé…), le coffre tombe à 0 au lieu d'un solde négatif.
+   */
   async function balances() {
-    const [anchors, nets] = await Promise.all([
+    const [anchors, rows] = await Promise.all([
       all('SELECT coffre, item, amount, ts FROM anchors'),
-      all(`SELECT t.coffre, t.item,
-             COALESCE(SUM(CASE WHEN t.action='deposit' THEN t.amount ELSE -t.amount END),0) AS net
-           FROM transactions t LEFT JOIN anchors a ON a.coffre = t.coffre AND a.item = t.item
-           WHERE t.kind = 'money' AND (a.ts IS NULL OR t.ts > a.ts)
-           GROUP BY t.coffre, t.item`),
+      all(`SELECT coffre, item, action, amount, ts FROM transactions WHERE kind = 'money' ORDER BY ts, id`),
     ]);
-    const map = {};
-    const slot = (c) => (map[c] ||= { cash: 0, black: 0, anchored_at: null });
-    for (const a of anchors) {
-      const s = slot(a.coffre);
-      s[a.item === 'cash' ? 'cash' : 'black'] += a.amount;
-      s.anchored_at = Math.max(s.anchored_at || 0, a.ts);
+    const anchor = Object.fromEntries(anchors.map((a) => [`${a.coffre}|${a.item}`, a]));
+    const cur = {};
+    for (const a of anchors) cur[`${a.coffre}|${a.item}`] = a.amount;
+    for (const r of rows) {
+      const k = `${r.coffre}|${r.item}`;
+      if (anchor[k] && r.ts <= anchor[k].ts) continue;
+      cur[k] = Math.max(0, (cur[k] || 0) + (r.action === 'deposit' ? r.amount : -r.amount));
     }
-    for (const n of nets) slot(n.coffre)[n.item === 'cash' ? 'cash' : 'black'] += n.net;
+    const map = {};
+    for (const [k, v] of Object.entries(cur)) {
+      const [coffre, item] = k.split('|');
+      const s = (map[coffre] ||= { cash: 0, black: 0, anchored_at: null });
+      s[item === 'cash' ? 'cash' : 'black'] += v;
+      if (anchor[k]) s.anchored_at = Math.max(s.anchored_at || 0, anchor[k].ts);
+    }
     for (const s of Object.values(map)) s.total = s.cash + s.black;
     return map;
   }
