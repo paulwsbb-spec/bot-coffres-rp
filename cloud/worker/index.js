@@ -5,6 +5,7 @@ import { createParser } from '../../src/parser.js';
 import { createStats, periodToRange, weekStart, weekEnd } from '../shared/cstats.js';
 import CONFIG from '../generated/config.json';
 import { COMMANDS } from './commands.js';
+import { OPS_COMMANDS, opsCommand, remindCooldowns } from './ops.js';
 
 const API = 'https://discord.com/api/v10';
 const nf = new Intl.NumberFormat('fr-FR');
@@ -124,6 +125,7 @@ async function updatePanel(env, coffre) {
 const PERIOD_LABEL = { '24h': '24 heures', '7d': '7 jours', '30d': '30 jours', all: 'Tout' };
 
 async function command(env, i) {
+  if (OPS_COMMANDS.has(i.data.name)) return opsCommand(env, i);
   const stats = createStats(env.DB);
   const opts = Object.fromEntries((i.data.options || []).map((o) => [o.name, o.value]));
   const coffre = opts.coffre || null;
@@ -247,6 +249,9 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(sync(env).catch((e) => console.log('sync', e.stack)));
+    ctx.waitUntil(Promise.all([
+      sync(env).catch((e) => console.log('sync', e.stack)),
+      remindCooldowns(env).catch((e) => console.log('rappels', e.stack)),
+    ]));
   },
 };

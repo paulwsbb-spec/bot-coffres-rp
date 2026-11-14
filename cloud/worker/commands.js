@@ -28,4 +28,29 @@ export const COMMANDS = [
     { type: INT, name: 'montant', description: 'Montant actuel dans le coffre, ex : 586737', required: true, min_value: 0 },
     { type: STR, name: 'type', description: 'Type d\'argent', choices: [{ name: 'Argent sale', value: 'black_money' }, { name: 'Argent propre', value: 'cash' }] }] },
   { name: 'nonreconnus', description: 'Logs que le bot n\'a pas compris', default_member_permissions: ADMIN },
+
+  // ---- Module opérations ----
+  ...['fleeca', 'armurerie'].map((type) => ({
+    name: type,
+    description: `Enregistre un braquage ${type === 'fleeca' ? 'Fleeca' : 'd\'armurerie'} (poste dans le salon de suivi)`,
+    options: [
+      { type: STR, name: 'resultat', description: 'Résultat', required: true, choices: [{ name: '✅ Réussi', value: 'reussi' }, { name: '❌ Échec', value: 'echec' }] },
+      { type: STR, name: 'participants', description: 'Participants (ex : Viktor, Doc, Lenny)' },
+      { type: INT, name: 'butin', description: 'Butin en $', min_value: 0 },
+      { type: STR, name: 'date', description: 'Si ce n\'est pas maintenant (ex : 10/11/2026 23h)' },
+      { type: STR, name: 'notes', description: 'Notes' },
+    ],
+  })),
+  { name: 'cooldowns', description: 'Fleeca / armurerie : disponible ou dans combien de temps' },
+  { name: 'historique', description: 'Dernières opérations d\'un type', options: [
+    { type: STR, name: 'type', description: 'Type', required: true, choices: [
+      { name: '🏦 Fleeca', value: 'fleeca' }, { name: '🔫 Armurerie', value: 'armurerie' }, { name: '💸 Transactions', value: 'transac' }] },
+    { type: INT, name: 'nombre', description: 'Nombre (max 25)', min_value: 1, max_value: 25 }] },
+  { name: 'transac', description: 'Enregistre une vente ou un achat (taxe calculée sur les ventes)', options: [
+    { type: STR, name: 'type', description: 'Vente ou achat', required: true, choices: [{ name: '💸 Vente', value: 'vente' }, { name: '🛒 Achat', value: 'achat' }] },
+    { type: INT, name: 'montant', description: 'Montant en $', required: true, min_value: 0 },
+    { type: STR, name: 'objet', description: 'Objet vendu / acheté', required: true },
+    { type: STR, name: 'partenaire', description: 'Partenaire (facultatif)' }] },
+  { name: 'bilan', description: 'Résumé (staff) : opérations, butin, transactions, taxes', default_member_permissions: ADMIN, options: [
+    { type: INT, name: 'jours', description: 'Sur combien de jours (défaut 7)', min_value: 1, max_value: 365 }] },
 ];
