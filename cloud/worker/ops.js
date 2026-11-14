@@ -118,7 +118,7 @@ async function recordTransac(env, i) {
       { name: 'Objet', value: String(o.objet).slice(0, 200), inline: true },
       { name: 'Montant', value: $(amount), inline: true },
       ...(o.partenaire ? [{ name: 'Partenaire', value: String(o.partenaire).slice(0, 200), inline: true }] : []),
-      ...(kind === 'vente' ? [{ name: `Taxe (${Math.round(TAX * 100)} %)`, value: $(tax), inline: true }, { name: 'Net', value: $(amount - tax), inline: true }] : []),
+      ...(kind === 'vente' && TAX > 0 ? [{ name: `Taxe (${Math.round(TAX * 100)} %)`, value: $(tax), inline: true }, { name: 'Net', value: $(amount - tax), inline: true }] : []),
     ],
     footer: { text: `Par ${me.name}` },
     timestamp: new Date(ts).toISOString(),
@@ -126,13 +126,13 @@ async function recordTransac(env, i) {
   await env.DB.prepare('INSERT INTO transacs (kind, amount, object, partner, tax, ts, author_id, author) VALUES (?,?,?,?,?,?,?,?)')
     .bind(kind, amount, o.objet, o.partenaire || null, tax, ts, me.id, me.name).run();
   if (CH.transac) await dc(env, `/channels/${CH.transac}/messages`, 'POST', { embeds: [embed] }).catch(() => {});
-  if (kind === 'vente' && CH.taxe) {
+  if (kind === 'vente' && TAX > 0 && CH.taxe) {
     await dc(env, `/channels/${CH.taxe}/messages`, 'POST', {
       content: `🧾 ${t(ts, 'd')} · **${String(o.objet).slice(0, 100)}** vendu ${$(amount)} → taxe **${$(tax)}** · par ${me.name}`,
       allowed_mentions: { parse: [] },
     }).catch(() => {});
   }
-  return ephemeral(`${kind === 'vente' ? '💸 Vente' : '🛒 Achat'} enregistré${kind === 'vente' ? ` · taxe ${$(tax)}` : ''}.`);
+  return ephemeral(`${kind === 'vente' ? '💸 Vente' : '🛒 Achat'} enregistré${kind === 'vente' && TAX > 0 ? ` · taxe ${$(tax)}` : ''}.`);
 }
 
 // ---------- /historique et /bilan ----------
@@ -165,7 +165,7 @@ async function bilan(env, i) {
     { name: '💰 Butin total', value: `**${$(f.loot + a.loot)}**`, inline: true },
     { name: '💸 Ventes', value: `${v.n} · **${$(v.total)}**`, inline: true },
     { name: '🛒 Achats', value: `${ac.n} · **${$(ac.total)}**`, inline: true },
-    { name: '🧾 Taxes', value: `**${$(v.tax)}**`, inline: true },
+    ...(TAX > 0 ? [{ name: '🧾 Taxes', value: `**${$(v.tax)}**`, inline: true }] : []),
   ] }] } };
 }
 

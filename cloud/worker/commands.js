@@ -46,11 +46,11 @@ export const COMMANDS = [
     { type: STR, name: 'type', description: 'Type', required: true, choices: [
       { name: '🏦 Fleeca', value: 'fleeca' }, { name: '🔫 Armurerie', value: 'armurerie' }, { name: '💸 Transactions', value: 'transac' }] },
     { type: INT, name: 'nombre', description: 'Nombre (max 25)', min_value: 1, max_value: 25 }] },
-  { name: 'transac', description: 'Enregistre une vente ou un achat (taxe calculée sur les ventes)', options: [
+  { name: 'transac', description: 'Enregistre une vente ou un achat', options: [
     { type: STR, name: 'type', description: 'Vente ou achat', required: true, choices: [{ name: '💸 Vente', value: 'vente' }, { name: '🛒 Achat', value: 'achat' }] },
     { type: INT, name: 'montant', description: 'Montant en $', required: true, min_value: 0 },
     { type: STR, name: 'objet', description: 'Objet vendu / acheté', required: true },
     { type: STR, name: 'partenaire', description: 'Partenaire (facultatif)' }] },
-  { name: 'bilan', description: 'Résumé (staff) : opérations, butin, transactions, taxes', default_member_permissions: ADMIN, options: [
+  { name: 'bilan', description: 'Résumé (staff) : opérations, butin, transactions', default_member_permissions: ADMIN, options: [
     { type: INT, name: 'jours', description: 'Sur combien de jours (défaut 7)', min_value: 1, max_value: 365 }] },
 ];
