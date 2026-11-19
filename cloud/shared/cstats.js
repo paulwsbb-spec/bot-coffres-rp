@@ -31,7 +31,7 @@ export function weekStart(ts = Date.now()) {
 export function weekEnd(start) { return weekStart(start + 8 * 86400e3); }
 
 export function buildWhere(f = {}, extra = []) {
-  const c = [...extra];
+  const c = ['ignored = 0', ...extra]; // mouvements annulés (mauvais clic…) exclus des stats
   const p = [];
   if (f.coffre) { c.push('coffre = ?'); p.push(f.coffre); }
   if (f.player) { c.push('player = ? COLLATE NOCASE'); p.push(f.player); }
@@ -69,7 +69,7 @@ export function createStats(DB) {
   async function balances() {
     const [anchors, rows] = await Promise.all([
       all('SELECT coffre, item, amount, ts FROM anchors'),
-      all(`SELECT coffre, item, action, amount, ts FROM transactions WHERE kind = 'money' ORDER BY ts, id`),
+      all(`SELECT coffre, item, action, amount, ts FROM transactions WHERE kind = 'money' AND ignored = 0 ORDER BY ts, id`),
     ]);
     const anchor = Object.fromEntries(anchors.map((a) => [`${a.coffre}|${a.item}`, a]));
     const cur = {};
@@ -131,7 +131,7 @@ export function createStats(DB) {
 
     async coffres() {
       const [rows, map] = await Promise.all([
-        all(`SELECT coffre, COUNT(*) AS n, MAX(ts) AS last_ts, ${MONEY_SUMS} FROM transactions GROUP BY coffre ORDER BY n DESC`),
+        all(`SELECT coffre, COUNT(*) AS n, MAX(ts) AS last_ts, ${MONEY_SUMS} FROM transactions WHERE ignored = 0 GROUP BY coffre ORDER BY n DESC`),
         balances(),
       ]);
       return rows.map((c) => ({ ...c, balance: map[c.coffre] || { cash: 0, black: 0, total: 0, anchored_at: null } }));

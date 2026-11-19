@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   quantity    REAL NOT NULL DEFAULT 0,
   amount      REAL,
   raw         TEXT,
+  ignored     INTEGER NOT NULL DEFAULT 0,   -- 1 = annulé (mauvais clic), exclu des stats
   UNIQUE (message_id, idx)
 );
 CREATE INDEX IF NOT EXISTS tx_ts     ON transactions (ts);
