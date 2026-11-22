@@ -168,6 +168,7 @@ const setWeek = (v) => { state.week = String(v); $('#week').value = state.week; 
 
 /* ---------- Bilan de la semaine (fenêtre) ---------- */
 let reportWeek = '';
+let reportCoffre = '';
 async function openReport(week = reportWeek) {
   if (!weeks.length) await loadWeeks();
   reportWeek = String(week || weeks[0]?.start || '');
@@ -176,7 +177,10 @@ async function openReport(week = reportWeek) {
   if (!dlg.open) dlg.showModal();
   $('#report-body').innerHTML = '<div class="empty">Chargement…</div>';
   let r;
-  try { r = await api('week-report', { week: reportWeek, period: '', player: '' }); }
+  const sel = $('#report-coffre');
+  const names = [...$('#coffre').options].map((o) => o.value).filter(Boolean);
+  sel.innerHTML = '<option value="">Tous les coffres</option>' + names.map((n) => `<option ${n === reportCoffre ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  try { r = await api('week-report', { week: reportWeek, period: '', player: '', coffre: reportCoffre }); }
   catch { $('#report-body').innerHTML = '<div class="empty">Bilan indisponible : relance le bot (demarrer.bat) pour activer cette fonction.</div>'; return; }
   const dfmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const pm = (i, o) => `${i ? `<b class="pos">+${nf.format(i)}</b>` : ''}${i && o ? ' ' : ''}${o ? `<b class="neg">−${nf.format(o)}</b>` : ''}${!i && !o ? '<span class="faint">—</span>' : ''}`;
@@ -186,7 +190,7 @@ async function openReport(week = reportWeek) {
     ...r.totals.keys.map((k, i) => [`${['🔓', '💻'][i] || '📦'} ${esc(k.item)}`, pm(k.in, k.out)]),
   ];
   $('#report-body').innerHTML = `
-    <p class="muted report-range">${r.current ? '🟢 Semaine en cours' : '📁 Semaine archivée'} · du ${dfmt.format(r.start)} au ${dfmt.format(r.end)} · ${nf.format(r.totals.n)} mouvements</p>
+    <p class="muted report-range">${r.current ? '🟢 Semaine en cours' : '📁 Semaine archivée'} · du ${dfmt.format(r.start)} au ${dfmt.format(r.end)} · ${nf.format(r.totals.n)} mouvements · <b>${reportCoffre ? esc(reportCoffre) : 'tous les coffres'}</b></p>
     <div class="report-tiles">${tiles.map(([l, v]) => `<div><span class="muted">${l}</span><div class="v">${v}</div></div>`).join('')}</div>
     <div class="table-wrap report-table"><table>
       <thead><tr><th>#</th><th>Joueur</th><th class="num">Déposé</th><th class="num">Retiré</th>
@@ -414,9 +418,10 @@ $('#coffre').addEventListener('change', (e) => { state.coffre = e.target.value; 
 $('#week').addEventListener('change', (e) => setWeek(e.target.value));
 $('#week-items').addEventListener('change', (e) => setWeek(e.target.value));
 $('#week-report').addEventListener('change', (e) => openReport(e.target.value));
+$('#report-coffre').addEventListener('change', (e) => { reportCoffre = e.target.value; openReport(); });
 $('#report-close').addEventListener('click', () => $('#report').close());
 $('#report').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }); // clic hors de la fenêtre
-document.addEventListener('click', (e) => { if (e.target.closest('#open-report')) openReport(''); });
+document.addEventListener('click', (e) => { if (e.target.closest('#open-report')) { reportCoffre = ''; openReport(''); } });
 let qTimer;
 $('#q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.offset = 0; loadTx(); }, 250); });
 $('#f-action').addEventListener('change', () => { state.offset = 0; loadTx(); });
